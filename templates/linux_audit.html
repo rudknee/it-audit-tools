@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linux Audit Review Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #37373f;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .subtitle {
+            color: #707070;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .nav-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #0055c6;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .nav-link:hover {
+            text-decoration: underline;
+        }
+        
+        .upload-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 85, 198, 0.05);
+            border-radius: 8px;
+            border: 2px dashed #0055c6;
+        }
+        
+        .file-upload-label {
+            display: block;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .file-upload-label:hover {
+            background: rgba(0, 85, 198, 0.1);
+        }
+        
+        .file-upload-label.has-file {
+            background: rgba(255, 226, 0, 0.15);
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .summary-box {
+            background: rgba(0, 85, 198, 0.05);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #0055c6;
+        }
+        
+        .summary-box h3 {
+            color: #37373f;
+            margin-bottom: 15px;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .summary-item {
+            color: #707070;
+        }
+        
+        .summary-item strong {
+            color: #37373f;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .alert.warning {
+            background: rgba(255, 226, 0, 0.15);
+            color: #37373f;
+            border-left: 4px solid #ffe200;
+        }
+        
+        .alert.error {
+            background: rgba(240, 69, 58, 0.1);
+            color: #f0453a;
+            border-left: 4px solid #f0453a;
+        }
+        
+        .table-section {
+            margin-bottom: 40px;
+        }
+        
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .table-header h2 {
+            color: #37373f;
+            font-size: 1.5em;
+        }
+        
+        .search-box {
+            padding: 8px 12px;
+            border: 2px solid #707070;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 250px;
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: #0055c6;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 85, 198, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #707070;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #37373f;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        thead {
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            color: white;
+        }
+        
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        th:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        tbody tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-compliant {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+        
+        .status-partial {
+            background: rgba(255, 226, 0, 0.2);
+            color: #37373f;
+        }
+        
+        .status-noncompliant {
+            background: rgba(240, 69, 58, 0.2);
+            color: #f0453a;
+        }
+        
+        .status-review {
+            background: rgba(0, 85, 198, 0.2);
+            color: #0055c6;
+        }
+        
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .risk-low {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+        
+        .risk-medium {
+            background: rgba(255, 226, 0, 0.2);
+            color: #37373f;
+        }
+        
+        .risk-high {
+            background: rgba(240, 69, 58, 0.2);
+            color: #f0453a;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #707070;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="nav-link">← Back to SQL Audit</a>
+        <h1>🐧 Linux Audit Review Tool</h1>
+        <p class="subtitle">Upload a Linux audit ZIP file to generate findings and exceptions register</p>
+        
+        <div class="upload-section">
+            <label for="zipFile" class="file-upload-label" id="fileLabel">
+                <strong>📁 Click to select audit ZIP file</strong><br>
+                <span style="font-size: 14px; color: #707070;">or drag and drop here</span>
+            </label>
+            <input type="file" id="zipFile" accept=".zip">
+            <div id="fileName" style="margin-top: 10px; color: #707070; text-align: center;"></div>
+        </div>
+        
+        <div id="alerts"></div>
+        
+        <div id="summarySection" class="hidden">
+            <div class="summary-box">
+                <h3>System Summary</h3>
+                <div class="summary-grid" id="summaryGrid"></div>
+            </div>
+        </div>
+        
+        <div id="resultsSection" class="hidden">
+            <div class="table-section">
+                <div class="table-header">
+                    <h2>Findings</h2>
+                    <div class="btn-group">
+                        <input type="text" id="findingsSearch" class="search-box" placeholder="Search findings...">
+                        <button class="btn btn-primary" onclick="exportFindingsCSV()">Export Findings CSV</button>
+                    </div>
+                </div>
+                <div id="findingsTableContainer"></div>
+            </div>
+            
+            <div class="table-section">
+                <div class="table-header">
+                    <h2>Exceptions Register</h2>
+                    <div class="btn-group">
+                        <input type="text" id="exceptionsSearch" class="search-box" placeholder="Search exceptions...">
+                        <button class="btn btn-primary" onclick="exportExceptionsCSV()">Export Exceptions CSV</button>
+                    </div>
+                </div>
+                <div id="exceptionsTableContainer"></div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="btn btn-primary" onclick="exportCombinedZIP()">Download Combined ZIP</button>
+                <button class="btn btn-secondary" onclick="reset()">Reset</button>
+            </div>
+        </div>
+        
+        <div id="loadingSection" class="hidden loading">
+            <p>Processing audit files...</p>
+        </div>
+    </div>
+    
+    <script>
+        // Global state
+        let systemSummary = {};
+        let findings = [];
+        let exceptions = [];
+        let currentSort = { column: null, direction: 'asc' };
+        
+        // File upload handling
+        const zipInput = document.getElementById('zipFile');
+        const fileLabel = document.getElementById('fileLabel');
+        const fileName = document.getElementById('fileName');
+        
+        zipInput.addEventListener('change', handleFileSelect);
+        
+        // Drag and drop
+        const uploadSection = document.querySelector('.upload-section');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadSection.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadSection.addEventListener(eventName, () => {
+                fileLabel.style.background = 'rgba(0, 85, 198, 0.1)';
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadSection.addEventListener(eventName, () => {
+                fileLabel.style.background = 'rgba(0, 85, 198, 0.05)';
+            }, false);
+        });
+        
+        uploadSection.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].name.endsWith('.zip')) {
+                zipInput.files = files;
+                handleFileSelect({ target: { files: files } });
+            }
+        }, false);
+        
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                fileName.textContent = `Selected: ${file.name}`;
+                fileLabel.classList.add('has-file');
+                processZip(file);
+            }
+        }
+        
+        async function processZip(file) {
+            showLoading();
+            clearAlerts();
+            
+            try {
+                const zip = await JSZip.loadAsync(file);
+                const parsed = await parseAllFiles(zip);
+                systemSummary = parsed.summary;
+                findings = generateFindings(parsed);
+                exceptions = generateExceptions(findings, systemSummary);
+                
+                displayResults();
+            } catch (error) {
+                showAlert('error', `Error processing ZIP: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function parseAllFiles(zip) {
+            const result = {
+                summary: {},
+                systemInfo: {},
+                sshdConfig: {},
+                passwordQuality: {},
+                faillockConfig: {},
+                users: [],
+                passwords: {},
+                lastLogin: {},
+                riskyServices: '',
+                rhosts: '',
+                sudoers: ''
+            };
+            
+            // SystemInformation.txt
+            const sysInfoFile = zip.file('SystemInformation.txt');
+            if (sysInfoFile) {
+                const content = await sysInfoFile.async('string');
+                const lines = content.split('\n').filter(l => l.trim());
+                if (lines.length >= 2) {
+                    const headers = lines[0].split(';').map(h => h.trim());
+                    const values = lines[1].split(';').map(v => v.trim());
+                    headers.forEach((h, i) => {
+                        if (values[i]) {
+                            const key = h.toLowerCase().replace(/\s+/g, '');
+                            if (key.includes('hostname')) result.summary.hostname = values[i];
+                            if (key.includes('os') && !key.includes('version')) result.summary.os = values[i];
+                            if (key.includes('version')) result.summary.osVersion = values[i];
+                            if (key.includes('date')) result.summary.scriptDate = values[i];
+                            result.systemInfo[h] = values[i];
+                        }
+                    });
+                }
+            }
+            
+            // Sshdconfig.txt
+            const sshdFile = zip.file('Sshdconfig.txt');
+            if (sshdFile) {
+                const content = await sshdFile.async('string');
+                const lines = content.split('\n');
+                const directives = [
+                    'PermitRootLogin', 'PasswordAuthentication', 'PubkeyAuthentication', 'PermitEmptyPasswords',
+                    'MaxAuthTries', 'MaxSessions', 'ClientAliveInterval', 'ClientAliveCountMax',
+                    'LoginGraceTime', 'Banner', 'AllowTcpForwarding', 'X11Forwarding', 'HostbasedAuthentication'
+                ];
+                
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    if (!trimmed || trimmed.startsWith('#')) return;
+                    
+                    directives.forEach(dir => {
+                        const regex = new RegExp(`^\\s*${dir}\\s+(.+)$`, 'i');
+                        const match = trimmed.match(regex);
+                        if (match) {
+                            result.sshdConfig[dir] = match[1].trim();
+                        }
+                    });
+                });
+            }
+            
+            // passwordquality.txt
+            const pwQualityFile = zip.file('passwordquality.txt');
+            if (pwQualityFile) {
+                const content = await pwQualityFile.async('string');
+                const minlenMatch = content.match(/minlen\s*=\s*(\d+)/i);
+                const maxseqMatch = content.match(/maxsequence\s*=\s*(\d+)/i);
+                const enforceRoot = /enforce_for_root/i.test(content);
+                
+                if (minlenMatch) result.passwordQuality.minlen = parseInt(minlenMatch[1]);
+                if (maxseqMatch) result.passwordQuality.maxsequence = parseInt(maxseqMatch[1]);
+                result.passwordQuality.enforce_for_root = enforceRoot;
+            }
+            
+            // faillockconfig.txt
+            const faillockFile = zip.file('faillockconfig.txt');
+            if (faillockFile) {
+                const content = await faillockFile.async('string');
+                const denyMatch = content.match(/deny\s*=\s*(\d+)/i);
+                const unlockMatch = content.match(/unlock_time\s*=\s*(\d+)/i);
+                
+                if (denyMatch) result.faillockConfig.deny = parseInt(denyMatch[1]);
+                if (unlockMatch) result.faillockConfig.unlock_time = parseInt(unlockMatch[1]);
+            }
+            
+            // Userinformation.txt
+            const usersFile = zip.file('Userinformation.txt');
+            if (usersFile) {
+                const content = await usersFile.async('string');
+                const lines = content.split('\n').filter(l => l.trim());
+                lines.forEach(line => {
+                    const parts = line.split(':');
+                    if (parts.length >= 7) {
+                        result.users.push({
+                            name: parts[0],
+                            uid: parseInt(parts[2]) || 0,
+                            gid: parseInt(parts[3]) || 0,
+                            gecos: parts[4],
+                            home: parts[5],
+                            shell: parts[6]
+                        });
+                    }
+                });
+            }
+            
+            // Passwordinformation.txt
+            const passwordsFile = zip.file('Passwordinformation.txt');
+            if (passwordsFile) {
+                const content = await passwordsFile.async('string');
+                const lines = content.split('\n').filter(l => l.trim());
+                lines.forEach(line => {
+                    const usernameMatch = line.match(/^(\w+)/);
+                    if (usernameMatch) {
+                        const username = usernameMatch[1];
+                        result.passwords[username] = /Locked/i.test(line) ? 'locked' : 'unlocked';
+                    }
+                });
+            }
+            
+            // Lastlogininformation.txt
+            const lastLoginFile = zip.file('Lastlogininformation.txt');
+            if (lastLoginFile) {
+                const content = await lastLoginFile.async('string');
+                const lines = content.split('\n').filter(l => l.trim());
+                lines.forEach(line => {
+                    const parts = line.split(/\s+/);
+                    if (parts.length >= 2) {
+                        result.lastLogin[parts[0]] = parts.slice(1).join(' ');
+                    }
+                });
+            }
+            
+            // riskyServices.txt
+            const riskyServicesFile = zip.file('riskyServices.txt');
+            if (riskyServicesFile) {
+                result.riskyServices = (await riskyServicesFile.async('string')).trim();
+            }
+            
+            // rhosts.txt
+            const rhostsFile = zip.file('rhosts.txt');
+            if (rhostsFile) {
+                result.rhosts = (await rhostsFile.async('string')).trim();
+            }
+            
+            // Sudoers.txt
+            const sudoersFile = zip.file('Sudoers.txt');
+            if (sudoersFile) {
+                result.sudoers = await sudoersFile.async('string');
+            }
+            
+            return result;
+        }
+        
+        function generateFindings(parsed) {
+            const findings = [];
+            const nonInteractiveShells = ['/sbin/nologin', '/usr/sbin/nologin', '/bin/false'];
+            
+            // SSH root login
+            const permitRoot = parsed.sshdConfig.PermitRootLogin || '';
+            const rootLoginValue = permitRoot.toLowerCase();
+            const rootLoginYes = rootLoginValue.startsWith('yes');
+            
+            findings.push({
+                control: 'SSH root login',
+                status: rootLoginYes ? 'Non-compliant' : 'Compliant',
+                detail: permitRoot ? `PermitRootLogin is set to '${permitRoot}'.` : 'PermitRootLogin unset (defaults vary, usually prohibit-password).',
+                risk: rootLoginYes ? 'High' : 'Low',
+                recommendation: rootLoginYes 
+                    ? 'Disable root SSH; use named accounts with sudo. Restrict via AllowUsers/Match, bastion-only source IPs, and key-only with break-glass procedure.'
+                    : 'Current configuration is acceptable.'
+            });
+            
+            // SSH password authentication
+            const passwordAuth = parsed.sshdConfig.PasswordAuthentication || '';
+            const passwordAuthValue = passwordAuth.toLowerCase();
+            
+            findings.push({
+                control: 'SSH password authentication',
+                status: passwordAuthValue.startsWith('no') ? 'Compliant' : 'Non-compliant',
+                detail: passwordAuth ? `PasswordAuthentication is set to '${passwordAuth}'.` : 'PasswordAuthentication unset (defaults to yes).',
+                risk: passwordAuthValue.startsWith('no') ? 'Low' : 'Medium',
+                recommendation: passwordAuthValue.startsWith('no')
+                    ? 'Current configuration is acceptable.'
+                    : 'Set PasswordAuthentication no; use key-based auth + MFA on bastion.'
+            });
+            
+            // Password quality
+            const minlen = parsed.passwordQuality.minlen || 0;
+            const enforceRoot = parsed.passwordQuality.enforce_for_root || false;
+            const pwQualityCompliant = minlen >= 14 && enforceRoot;
+            
+            findings.push({
+                control: 'Password quality (pwquality)',
+                status: pwQualityCompliant ? 'Compliant' : 'Partially compliant',
+                detail: `minlen=${minlen || 'unset'}, maxsequence=${parsed.passwordQuality.maxsequence || 'unset'}, enforce_for_root=${enforceRoot ? 'present' : 'missing'}.`,
+                risk: 'Low',
+                recommendation: 'Keep minlen ≥ 14; set explicit credit rules if policy requires.'
+            });
+            
+            // Account lockout
+            const deny = parsed.faillockConfig.deny;
+            let lockoutStatus = 'Partially compliant';
+            if (deny !== undefined) {
+                lockoutStatus = deny <= 5 ? 'Compliant' : 'Partially compliant';
+            }
+            
+            findings.push({
+                control: 'Account lockout (faillock)',
+                status: lockoutStatus,
+                detail: `deny=${deny || 'unset'}, unlock_time=${parsed.faillockConfig.unlock_time || 'unset'}.`,
+                risk: 'Medium',
+                recommendation: 'Set deny ≤ 5; set unlock_time; ensure audit.'
+            });
+            
+            // Risky services
+            findings.push({
+                control: 'Risky legacy services',
+                status: parsed.riskyServices ? 'Non-compliant' : 'Compliant',
+                detail: parsed.riskyServices ? `Detected services: ${parsed.riskyServices}` : 'No risky services detected.',
+                risk: parsed.riskyServices ? 'High' : 'Low',
+                recommendation: parsed.riskyServices 
+                    ? 'Disable telnet/rsh/etc.; use SSH.'
+                    : 'Current configuration is acceptable.'
+            });
+            
+            // rhosts
+            findings.push({
+                control: 'rhosts trust files',
+                status: parsed.rhosts ? 'Non-compliant' : 'Compliant',
+                detail: parsed.rhosts ? `Detected .rhosts files: ${parsed.rhosts}` : 'No .rhosts files detected.',
+                risk: parsed.rhosts ? 'High' : 'Low',
+                recommendation: parsed.rhosts 
+                    ? 'Remove .rhosts; use SSH keys.'
+                    : 'Current configuration is acceptable.'
+            });
+            
+            // Sudoers: postgres
+            const postgresSudo = /^\s*postgres\s+ALL=\(ALL\)\s+ALL\b/m.test(parsed.sudoers);
+            findings.push({
+                control: 'Sudoers: postgres privileges',
+                status: postgresSudo ? 'Non-compliant / needs justification' : 'Compliant',
+                detail: postgresSudo ? 'postgres has full sudo (ALL=(ALL) ALL).' : 'No full sudo for postgres found.',
+                risk: postgresSudo ? 'High' : 'Low',
+                recommendation: postgresSudo
+                    ? 'Constrain via sudo command aliases or remove; approve elevation only via change control.'
+                    : 'Current configuration is acceptable.'
+            });
+            
+            // Local users with interactive shells
+            const interactiveUsers = parsed.users.filter(u => 
+                u.shell && !nonInteractiveShells.includes(u.shell)
+            ).map(u => u.name).filter(n => !['sync', 'shutdown', 'halt'].includes(n));
+            
+            findings.push({
+                control: 'Local users with interactive shells',
+                status: 'Review',
+                detail: interactiveUsers.length > 0 ? `Users: ${interactiveUsers.join(', ')}` : 'No interactive users found.',
+                risk: 'Medium',
+                recommendation: 'Validate approvals; disable where not needed; centralize auth.'
+            });
+            
+            // PermitEmptyPasswords
+            const emptyPasswords = parsed.sshdConfig.PermitEmptyPasswords || '';
+            const emptyPasswordsYes = emptyPasswords.toLowerCase().startsWith('yes');
+            
+            findings.push({
+                control: 'PermitEmptyPasswords',
+                status: emptyPasswordsYes ? 'Non-compliant' : 'Compliant',
+                detail: emptyPasswords ? `PermitEmptyPasswords is set to '${emptyPasswords}'.` : 'PermitEmptyPasswords unset (defaults to no).',
+                risk: emptyPasswordsYes ? 'High' : 'Low',
+                recommendation: emptyPasswordsYes 
+                    ? 'Set PermitEmptyPasswords no; audit for empty hashes.'
+                    : 'Current configuration is acceptable.'
+            });
+            
+            // PubkeyAuthentication
+            const pubkeyAuth = parsed.sshdConfig.PubkeyAuthentication || '';
+            const pubkeyAuthValue = pubkeyAuth.toLowerCase();
+            
+            findings.push({
+                control: 'PubkeyAuthentication',
+                status: pubkeyAuthValue.startsWith('yes') ? 'Compliant' : (pubkeyAuthValue.startsWith('no') ? 'Non-compliant' : 'Review'),
+                detail: pubkeyAuth ? `PubkeyAuthentication is set to '${pubkeyAuth}'.` : 'PubkeyAuthentication unset.',
+                risk: pubkeyAuthValue.startsWith('yes') ? 'Low' : 'Medium',
+                recommendation: 'Enable pubkey; pair with PasswordAuthentication no.'
+            });
+            
+            // MaxAuthTries
+            const maxAuthTries = parsed.sshdConfig.MaxAuthTries ? parseInt(parsed.sshdConfig.MaxAuthTries) : null;
+            let maxAuthStatus = 'Review';
+            if (maxAuthTries !== null) {
+                maxAuthStatus = maxAuthTries <= 4 ? 'Compliant' : 'Partially compliant';
+            }
+            
+            findings.push({
+                control: 'MaxAuthTries',
+                status: maxAuthStatus,
+                detail: maxAuthTries !== null ? `MaxAuthTries is set to ${maxAuthTries}.` : 'MaxAuthTries unset.',
+                risk: 'Medium',
+                recommendation: 'Set MaxAuthTries 3–4.'
+            });
+            
+            // MaxSessions
+            const maxSessions = parsed.sshdConfig.MaxSessions ? parseInt(parsed.sshdConfig.MaxSessions) : null;
+            let maxSessStatus = 'Review';
+            if (maxSessions !== null) {
+                maxSessStatus = maxSessions <= 10 ? 'Compliant' : 'Partially compliant';
+            }
+            
+            findings.push({
+                control: 'MaxSessions',
+                status: maxSessStatus,
+                detail: maxSessions !== null ? `MaxSessions is set to ${maxSessions}.` : 'MaxSessions unset.',
+                risk: 'Low',
+                recommendation: 'Cap per policy (often 10).'
+            });
+            
+            // ClientAliveInterval / ClientAliveCountMax
+            const aliveInterval = parsed.sshdConfig.ClientAliveInterval ? parseInt(parsed.sshdConfig.ClientAliveInterval) : null;
+            const aliveCountMax = parsed.sshdConfig.ClientAliveCountMax ? parseInt(parsed.sshdConfig.ClientAliveCountMax) : null;
+            let aliveStatus = 'Review';
+            if (aliveInterval !== null && aliveCountMax !== null) {
+                const timeout = aliveInterval * aliveCountMax;
+                aliveStatus = timeout <= 900 ? 'Compliant' : 'Partially compliant';
+            }
+            
+            findings.push({
+                control: 'ClientAliveInterval / ClientAliveCountMax',
+                status: aliveStatus,
+                detail: aliveInterval !== null && aliveCountMax !== null 
+                    ? `Interval=${aliveInterval}s, CountMax=${aliveCountMax}, effective timeout=${aliveInterval * aliveCountMax}s.`
+                    : `Interval=${aliveInterval || 'unset'}, CountMax=${aliveCountMax || 'unset'}.`,
+                risk: 'Low',
+                recommendation: 'Set e.g., ClientAliveInterval 300 & ClientAliveCountMax 3.'
+            });
+            
+            // LoginGraceTime
+            const graceTime = parsed.sshdConfig.LoginGraceTime ? parseInt(parsed.sshdConfig.LoginGraceTime) : null;
+            let graceStatus = 'Review';
+            if (graceTime !== null) {
+                graceStatus = graceTime <= 60 ? 'Compliant' : 'Partially compliant';
+            }
+            
+            findings.push({
+                control: 'LoginGraceTime',
+                status: graceStatus,
+                detail: graceTime !== null ? `LoginGraceTime is set to ${graceTime} seconds.` : 'LoginGraceTime unset.',
+                risk: 'Low',
+                recommendation: 'Set 30–60 seconds.'
+            });
+            
+            // AllowTcpForwarding
+            const tcpForward = parsed.sshdConfig.AllowTcpForwarding || '';
+            const tcpForwardValue = tcpForward.toLowerCase();
+            
+            findings.push({
+                control: 'AllowTcpForwarding',
+                status: tcpForwardValue === 'no' ? 'Compliant' : 'Review',
+                detail: tcpForward ? `AllowTcpForwarding is set to '${tcpForward}'.` : 'AllowTcpForwarding unset.',
+                risk: 'Low',
+                recommendation: 'Disable unless required; if required, scope via Match blocks.'
+            });
+            
+            // X11Forwarding
+            const x11Forward = parsed.sshdConfig.X11Forwarding || '';
+            const x11ForwardValue = x11Forward.toLowerCase();
+            
+            findings.push({
+                control: 'X11Forwarding',
+                status: x11ForwardValue === 'yes' ? 'Non-compliant' : (x11ForwardValue === 'no' ? 'Compliant' : 'Review'),
+                detail: x11Forward ? `X11Forwarding is set to '${x11Forward}'.` : 'X11Forwarding unset.',
+                risk: x11ForwardValue === 'yes' ? 'Medium' : 'Low',
+                recommendation: 'Set X11Forwarding no for servers.'
+            });
+            
+            // HostbasedAuthentication
+            const hostbased = parsed.sshdConfig.HostbasedAuthentication || '';
+            const hostbasedValue = hostbased.toLowerCase();
+            
+            findings.push({
+                control: 'HostbasedAuthentication',
+                status: hostbasedValue.startsWith('yes') ? 'Non-compliant' : 'Compliant',
+                detail: hostbased ? `HostbasedAuthentication is set to '${hostbased}'.` : 'HostbasedAuthentication unset (defaults to no).',
+                risk: hostbasedValue.startsWith('yes') ? 'High' : 'Low',
+                recommendation: hostbasedValue.startsWith('yes')
+                    ? 'Prefer key-based user auth; disable hostbased.'
+                    : 'Current configuration is acceptable.'
+            });
+            
+            // UID 0 accounts (non-root)
+            const uid0Accounts = parsed.users.filter(u => u.uid === 0 && u.name !== 'root').map(u => u.name);
+            findings.push({
+                control: 'UID 0 accounts (non-root)',
+                status: uid0Accounts.length > 0 ? 'Non-compliant' : 'Compliant',
+                detail: uid0Accounts.length > 0 ? `Accounts with UID 0: ${uid0Accounts.join(', ')}` : 'Only root has UID 0.',
+                risk: uid0Accounts.length > 0 ? 'High' : 'Low',
+                recommendation: uid0Accounts.length > 0
+                    ? 'Remove UID 0; use sudo with audit.'
+                    : 'Current configuration is acceptable.'
+            });
+            
+            // Duplicate UIDs
+            const uidMap = {};
+            parsed.users.forEach(u => {
+                if (!uidMap[u.uid]) uidMap[u.uid] = [];
+                uidMap[u.uid].push(u.name);
+            });
+            const duplicates = Object.entries(uidMap).filter(([uid, users]) => users.length > 1);
+            
+            findings.push({
+                control: 'Duplicate UIDs',
+                status: duplicates.length > 0 ? 'Non-compliant' : 'Compliant',
+                detail: duplicates.length > 0 
+                    ? duplicates.map(([uid, users]) => `UID ${uid}: ${users.join(', ')}`).join('; ')
+                    : 'All UIDs are unique.',
+                risk: duplicates.length > 0 ? 'High' : 'Low',
+                recommendation: duplicates.length > 0
+                    ? 'Assign unique UIDs; reconcile ownerships.'
+                    : 'Current configuration is acceptable.'
+            });
+            
+            // System accounts with interactive shells
+            const systemAccountsWithShells = parsed.users.filter(u => 
+                u.uid < 1000 && u.shell && !nonInteractiveShells.includes(u.shell)
+            ).map(u => u.name);
+            
+            findings.push({
+                control: 'System accounts with interactive shells',
+                status: systemAccountsWithShells.length > 0 ? 'Non-compliant' : 'Compliant',
+                detail: systemAccountsWithShells.length > 0 
+                    ? `Accounts: ${systemAccountsWithShells.join(', ')}`
+                    : 'No system accounts with interactive shells.',
+                risk: systemAccountsWithShells.length > 0 ? 'Medium' : 'Low',
+                recommendation: systemAccountsWithShells.length > 0
+                    ? 'Set shell to /usr/sbin/nologin or /bin/false.'
+                    : 'Current configuration is acceptable.'
+            });
+            
+            // Unlocked local accounts
+            const interactiveUserNames = parsed.users.filter(u => 
+                u.shell && !nonInteractiveShells.includes(u.shell)
+            ).map(u => u.name);
+            const unlockedInteractive = interactiveUserNames.filter(name => 
+                parsed.passwords[name] === 'unlocked' || !parsed.passwords[name]
+            );
+            
+            findings.push({
+                control: 'Unlocked local accounts',
+                status: unlockedInteractive.length > 0 ? 'Review' : 'Compliant',
+                detail: unlockedInteractive.length > 0 
+                    ? `Unlocked interactive users: ${unlockedInteractive.join(', ')}`
+                    : 'All interactive accounts are locked or not found.',
+                risk: unlockedInteractive.length > 0 ? 'Medium' : 'Low',
+                recommendation: 'Verify business need; lock or migrate to central auth.'
+            });
+            
+            // Dormant accounts
+            const now = new Date();
+            const dormantUsers = [];
+            interactiveUserNames.forEach(name => {
+                const lastLoginStr = parsed.lastLogin[name];
+                if (lastLoginStr) {
+                    // Try to parse date (simplified - may need more robust parsing)
+                    const loginDate = parseDate(lastLoginStr);
+                    if (loginDate) {
+                        const daysSince = Math.floor((now - loginDate) / (1000 * 60 * 60 * 24));
+                        if (daysSince >= 90) {
+                            dormantUsers.push(`${name} (${daysSince} days)`);
+                        }
+                    }
+                }
+            });
+            
+            if (dormantUsers.length > 0 || Object.keys(parsed.lastLogin).length > 0) {
+                findings.push({
+                    control: 'Dormant accounts (≥ 90 days)',
+                    status: 'Review',
+                    detail: dormantUsers.length > 0 
+                        ? `Dormant users: ${dormantUsers.join(', ')}`
+                        : 'No dormant accounts found among interactive users.',
+                    risk: 'Low',
+                    recommendation: 'Disable or remove.'
+                });
+            }
+            
+            return findings;
+        }
+        
+        function parseDate(dateStr) {
+            // Simple date parsing - may need enhancement
+            try {
+                return new Date(dateStr);
+            } catch {
+                return null;
+            }
+        }
+        
+        function generateExceptions(findings, summary) {
+            const exceptions = [];
+            const scope = summary.hostname || 'This host';
+            
+            findings.forEach(finding => {
+                if (['Non-compliant', 'Non-compliant / needs justification', 'Review'].includes(finding.status)) {
+                    let exception = null;
+                    
+                    if (finding.control === 'SSH root login' && finding.status === 'Non-compliant') {
+                        exception = {
+                            exception: 'Root SSH enabled',
+                            scope: scope,
+                            reason: 'Break-glass for on-call DBAs during incidents.',
+                            controls: 'Bastion IP restriction; key-only; MFA on bastion; session recording; sudo/root logs to SIEM; monthly review.',
+                            expiry: 'Temporary – 90 days; review monthly.'
+                        };
+                    } else if (finding.control === 'SSH password authentication' && finding.status === 'Non-compliant') {
+                        exception = {
+                            exception: 'SSH password authentication enabled',
+                            scope: scope,
+                            reason: 'Legacy automation/support tooling.',
+                            controls: 'Bastion-only; pwquality minlen 14; faillock deny=5; migrate to key-based.',
+                            expiry: 'Temporary – 60 days.'
+                        };
+                    } else if (finding.control === 'Sudoers: postgres privileges' && finding.status === 'Non-compliant / needs justification') {
+                        exception = {
+                            exception: 'postgres has full sudo',
+                            scope: scope,
+                            reason: 'Vendor scripts/patching in maintenance windows.',
+                            controls: 'Command aliases; change ticket; Defaults use_pty & Defaults logfile; post-window peer review.',
+                            expiry: 'Temporary – 60 days.'
+                        };
+                    } else if (finding.control === 'UID 0 accounts (non-root)' && finding.status === 'Non-compliant') {
+                        exception = {
+                            exception: 'UID 0 accounts (non-root)',
+                            scope: scope,
+                            reason: 'Legacy startup tooling.',
+                            controls: 'Maintenance-window only; service isolation; FIM on /etc/passwd; SIEM alert on UID 0 logins; change ticket.',
+                            expiry: 'Temporary – 30 days.'
+                        };
+                    } else if (finding.control === 'Duplicate UIDs' && finding.status === 'Non-compliant') {
+                        exception = {
+                            exception: 'Duplicate UIDs',
+                            scope: scope,
+                            reason: 'Pending UID reallocation.',
+                            controls: 'Ownership reconciliation plan; change window; SIEM correlation for impacted UIDs.',
+                            expiry: 'Temporary – 30 days.'
+                        };
+                    } else if (finding.control === 'System accounts with interactive shells' && finding.status === 'Non-compliant') {
+                        exception = {
+                            exception: 'System accounts with shells',
+                            scope: scope,
+                            reason: 'Short-term operational access.',
+                            controls: 'IP restriction; command allow-list; session recording; scheduled removal.',
+                            expiry: 'Temporary – 30–60 days.'
+                        };
+                    } else if ((finding.control === 'AllowTcpForwarding' || finding.control === 'X11Forwarding') && finding.status !== 'Compliant') {
+                        exception = {
+                            exception: 'Forwarding/X11 required',
+                            scope: scope,
+                            reason: 'Vendor tooling/tunnels.',
+                            controls: 'Match scoping by user/IP, limited ports, time-bound changes, logging to SIEM.',
+                            expiry: 'Temporary – 60 days.'
+                        };
+                    }
+                    
+                    if (exception) {
+                        exceptions.push(exception);
+                    }
+                }
+            });
+            
+            // If no exceptions, add default
+            if (exceptions.length === 0) {
+                exceptions.push({
+                    exception: 'No exceptions required',
+                    scope: scope,
+                    reason: 'Current configuration meets policy for reviewed controls.',
+                    controls: 'Continue SIEM monitoring; quarterly review.',
+                    expiry: '12 months.'
+                });
+            }
+            
+            return exceptions;
+        }
+        
+        function displayResults() {
+            document.getElementById('summarySection').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+            
+            // Display summary
+            const summaryGrid = document.getElementById('summaryGrid');
+            summaryGrid.innerHTML = `
+                <div class="summary-item"><strong>Hostname:</strong> ${systemSummary.hostname || 'N/A'}</div>
+                <div class="summary-item"><strong>OS:</strong> ${systemSummary.os || 'N/A'}</div>
+                <div class="summary-item"><strong>OS Version:</strong> ${systemSummary.osVersion || 'N/A'}</div>
+                <div class="summary-item"><strong>Script Date:</strong> ${systemSummary.scriptDate || 'N/A'}</div>
+            `;
+            
+            // Display findings table
+            displayFindingsTable();
+            
+            // Display exceptions table
+            displayExceptionsTable();
+            
+            // Setup search
+            document.getElementById('findingsSearch').addEventListener('input', (e) => {
+                filterTable('findings', e.target.value);
+            });
+            
+            document.getElementById('exceptionsSearch').addEventListener('input', (e) => {
+                filterTable('exceptions', e.target.value);
+            });
+        }
+        
+        function displayFindingsTable() {
+            const container = document.getElementById('findingsTableContainer');
+            let html = '<table><thead><tr>';
+            html += '<th onclick="sortTable(\'findings\', \'control\')">Control</th>';
+            html += '<th onclick="sortTable(\'findings\', \'status\')">Status</th>';
+            html += '<th onclick="sortTable(\'findings\', \'risk\')">Risk</th>';
+            html += '<th>Detail</th>';
+            html += '<th>Recommendation</th>';
+            html += '</tr></thead><tbody id="findingsTableBody"></tbody></table>';
+            container.innerHTML = html;
+            
+            renderFindingsRows();
+        }
+        
+        function renderFindingsRows() {
+            const tbody = document.getElementById('findingsTableBody');
+            tbody.innerHTML = findings.map(f => `
+                <tr>
+                    <td>${escapeHtml(f.control)}</td>
+                    <td><span class="status-badge status-${f.status.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-')}">${f.status}</span></td>
+                    <td><span class="risk-badge risk-${f.risk.toLowerCase()}">${f.risk}</span></td>
+                    <td>${escapeHtml(f.detail)}</td>
+                    <td>${escapeHtml(f.recommendation)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        function displayExceptionsTable() {
+            const container = document.getElementById('exceptionsTableContainer');
+            let html = '<table><thead><tr>';
+            html += '<th onclick="sortTable(\'exceptions\', \'exception\')">Exception</th>';
+            html += '<th onclick="sortTable(\'exceptions\', \'scope\')">Scope</th>';
+            html += '<th>Reason</th>';
+            html += '<th>Controls</th>';
+            html += '<th>Expiry</th>';
+            html += '</tr></thead><tbody id="exceptionsTableBody"></tbody></table>';
+            container.innerHTML = html;
+            
+            renderExceptionsRows();
+        }
+        
+        function renderExceptionsRows() {
+            const tbody = document.getElementById('exceptionsTableBody');
+            tbody.innerHTML = exceptions.map(e => `
+                <tr>
+                    <td>${escapeHtml(e.exception)}</td>
+                    <td>${escapeHtml(e.scope)}</td>
+                    <td>${escapeHtml(e.reason)}</td>
+                    <td>${escapeHtml(e.controls)}</td>
+                    <td>${escapeHtml(e.expiry)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        function sortTable(type, column) {
+            const data = type === 'findings' ? findings : exceptions;
+            const direction = currentSort.column === column && currentSort.direction === 'asc' ? 'desc' : 'asc';
+            
+            data.sort((a, b) => {
+                const aVal = a[column] || '';
+                const bVal = b[column] || '';
+                const comparison = aVal.toString().localeCompare(bVal.toString());
+                return direction === 'asc' ? comparison : -comparison;
+            });
+            
+            currentSort = { column, direction };
+            
+            if (type === 'findings') {
+                renderFindingsRows();
+            } else {
+                renderExceptionsRows();
+            }
+        }
+        
+        function filterTable(type, searchTerm) {
+            const search = searchTerm.toLowerCase();
+            const tbody = document.getElementById(`${type}TableBody`);
+            const rows = tbody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(search) ? '' : 'none';
+            });
+        }
+        
+        function exportFindingsCSV() {
+            exportToCSV(findings, 'linux_audit_findings.csv', ['control', 'status', 'risk', 'detail', 'recommendation']);
+        }
+        
+        function exportExceptionsCSV() {
+            exportToCSV(exceptions, 'linux_audit_exceptions_register.csv', ['exception', 'scope', 'reason', 'controls', 'expiry']);
+        }
+        
+        function exportToCSV(data, filename, columns) {
+            const headers = columns.join(',');
+            const rows = data.map(item => 
+                columns.map(col => {
+                    const value = item[col] || '';
+                    // Escape quotes and wrap in quotes if contains comma, quote, or newline
+                    const escaped = value.toString().replace(/"/g, '""');
+                    return /[,"\n]/.test(escaped) ? `"${escaped}"` : escaped;
+                }).join(',')
+            );
+            
+            const csv = [headers, ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+        
+        async function exportCombinedZIP() {
+            const zip = new JSZip();
+            
+            // Add findings CSV
+            const findingsCSV = generateCSV(findings, ['control', 'status', 'risk', 'detail', 'recommendation']);
+            zip.file('linux_audit_findings.csv', findingsCSV);
+            
+            // Add exceptions CSV
+            const exceptionsCSV = generateCSV(exceptions, ['exception', 'scope', 'reason', 'controls', 'expiry']);
+            zip.file('linux_audit_exceptions_register.csv', exceptionsCSV);
+            
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'linux_audit_outputs.zip';
+            link.click();
+        }
+        
+        function generateCSV(data, columns) {
+            const headers = columns.join(',');
+            const rows = data.map(item => 
+                columns.map(col => {
+                    const value = item[col] || '';
+                    const escaped = value.toString().replace(/"/g, '""');
+                    return /[,"\n]/.test(escaped) ? `"${escaped}"` : escaped;
+                }).join(',')
+            );
+            return [headers, ...rows].join('\n');
+        }
+        
+        function reset() {
+            zipInput.value = '';
+            fileName.textContent = '';
+            fileLabel.classList.remove('has-file');
+            document.getElementById('summarySection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            clearAlerts();
+            findings = [];
+            exceptions = [];
+            systemSummary = {};
+        }
+        
+        function showLoading() {
+            document.getElementById('loadingSection').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingSection').classList.add('hidden');
+        }
+        
+        function showAlert(type, message) {
+            const alerts = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            alerts.appendChild(alert);
+        }
+        
+        function clearAlerts() {
+            document.getElementById('alerts').innerHTML = '';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
+

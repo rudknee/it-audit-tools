@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Authorisation Exceptions Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #37373f;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .subtitle {
+            color: #707070;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #37373f;
+            font-weight: 500;
+        }
+        
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #707070;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #0055c6;
+        }
+        
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-upload-label {
+            display: block;
+            padding: 40px;
+            border: 3px dashed #0055c6;
+            border-radius: 8px;
+            text-align: center;
+            background: rgba(0, 85, 198, 0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .file-upload-label:hover {
+            background: rgba(0, 85, 198, 0.1);
+            border-color: #0055c6;
+        }
+        
+        .file-upload-label.has-file {
+            background: rgba(255, 226, 0, 0.15);
+            border-color: #ffe200;
+        }
+        
+        .file-name {
+            margin-top: 10px;
+            color: #707070;
+            font-size: 14px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 85, 198, 0.4);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .alert.error {
+            background: rgba(240, 69, 58, 0.1);
+            color: #f0453a;
+            border-left: 4px solid #f0453a;
+        }
+        
+        .info-box {
+            background: rgba(0, 85, 198, 0.05);
+            border-left: 4px solid #0055c6;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #37373f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="text-align: right; margin-bottom: 10px;">
+            <a href="/linux-audit" style="color: #0055c6; text-decoration: none; font-weight: 500;">🐧 Linux Audit Tool →</a>
+        </div>
+        <h1>🔒 SQL Authorisation Exceptions Generator</h1>
+        <p class="subtitle">Upload your CAAT CSV file to generate an exceptions register</p>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST" action="/upload" enctype="multipart/form-data" id="upload-form">
+            <div id="file-rows">
+                <div class="file-row" data-index="0" style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>CSV File *</label>
+                        <div class="file-upload">
+                            <input type="file" name="files[]" accept=".csv" required>
+                            <label class="file-upload-label">
+                                <strong>📁 Click to select CSV file</strong><br>
+                                <span style="font-size: 14px; color: #707070;">or drag and drop here</span>
+                            </label>
+                            <div class="file-name"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Environment Label *</label>
+                        <input type="text" name="env_labels[]" 
+                               placeholder="e.g., axale, axale2, axale3" 
+                               value="axale" required>
+                    </div>
+                    <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.08); margin: 10px 0;">
+                </div>
+            </div>
+            <button type="button" id="add-row-btn" class="submit-btn" style="margin-bottom: 15px; background: linear-gradient(135deg, #ffe200 0%, #37373f 100%); color: #37373f;">➕ Add another file</button>
+            
+            <div class="form-group">
+                <label for="date_format">Date Format</label>
+                <select id="date_format" name="date_format">
+                    <option value="DMY" selected>DMY (Day-Month-Year)</option>
+                    <option value="MDY">MDY (Month-Day-Year)</option>
+                    <option value="YMD">YMD (Year-Month-Day)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="apply_axale2_filter" name="apply_axale2_filter" value="true">
+                    <label for="apply_axale2_filter" style="margin: 0;">
+                        Apply axale2 exclusion filter (excludes logins matching ^[A-Z]{2}[0-9]{4}$ from E1-E3)
+                    </label>
+                </div>
+            </div>
+            
+            <button type="submit" class="submit-btn">🚀 Process File</button>
+        </form>
+        
+        <div class="info-box">
+            <strong>📋 Expected CSV Format:</strong><br>
+            • Row 0: Metadata (ignored)<br>
+            • Row 1: Column headers<br>
+            • Row 2+: Data rows<br><br>
+            The tool will generate two output files (combined across all uploads):<br>
+            • Detailed exceptions CSV (includes Environment column)<br>
+            • Summary CSV with counts per environment and exception type
+        </div>
+    </div>
+    
+    <script>
+        const fileRows = document.getElementById('file-rows');
+        const addRowBtn = document.getElementById('add-row-btn');
+
+        function wireRow(row) {
+            const input = row.querySelector('input[type="file"]');
+            const label = row.querySelector('.file-upload-label');
+            const nameEl = row.querySelector('.file-name');
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            function highlight() { label.style.background = 'rgba(0, 85, 198, 0.1)'; }
+            function unhighlight() { label.style.background = 'rgba(0, 85, 198, 0.05)'; }
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    input.files = files;
+                    nameEl.textContent = 'Selected: ' + files[0].name;
+                    label.classList.add('has-file');
+                    maybeAddRow();
+                }
+            }
+
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    nameEl.textContent = 'Selected: ' + e.target.files[0].name;
+                    label.classList.add('has-file');
+                    maybeAddRow();
+                } else {
+                    nameEl.textContent = '';
+                    label.classList.remove('has-file');
+                }
+            });
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                label.addEventListener(eventName, preventDefaults, false);
+            });
+            ['dragenter', 'dragover'].forEach(eventName => label.addEventListener(eventName, highlight, false));
+            ['dragleave', 'drop'].forEach(eventName => label.addEventListener(eventName, unhighlight, false));
+            label.addEventListener('drop', handleDrop, false);
+        }
+
+        function addRow() {
+            const idx = fileRows.querySelectorAll('.file-row').length;
+            const div = document.createElement('div');
+            div.className = 'file-row';
+            div.setAttribute('data-index', idx.toString());
+            div.style.marginBottom = '20px';
+            div.innerHTML = `
+                <div class="form-group">
+                    <label>CSV File *</label>
+                    <div class="file-upload">
+                        <input type="file" name="files[]" accept=".csv" required>
+                        <label class="file-upload-label">
+                            <strong>📁 Click to select CSV file</strong><br>
+                            <span style="font-size: 14px; color: #707070;">or drag and drop here</span>
+                        </label>
+                        <div class="file-name"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Environment Label *</label>
+                    <input type="text" name="env_labels[]" placeholder="e.g., axale, axale2, axale3" value="" required>
+                </div>
+                <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.08); margin: 10px 0;">
+            `;
+            fileRows.appendChild(div);
+            wireRow(div);
+        }
+
+        function maybeAddRow() {
+            const rows = fileRows.querySelectorAll('.file-row');
+            const lastRow = rows[rows.length - 1];
+            const lastInput = lastRow.querySelector('input[type="file"]');
+            if (lastInput && lastInput.files && lastInput.files.length > 0) {
+                addRowBtn.style.display = 'inline-block';
+            }
+        }
+
+        addRowBtn.addEventListener('click', addRow);
+
+        // Wire initial row
+        wireRow(fileRows.querySelector('.file-row'));
+        addRowBtn.style.display = 'none';
+    </script>
+</body>
+</html>
+
