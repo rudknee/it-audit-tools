@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT Audit Tools</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 60px 40px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #37373f;
+            margin-bottom: 15px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #707070;
+            margin-bottom: 50px;
+            font-size: 1.2em;
+        }
+        
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .tool-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 40px;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 85, 198, 0.2);
+            border-color: #0055c6;
+        }
+        
+        .tool-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        
+        .tool-title {
+            color: #37373f;
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .tool-description {
+            color: #707070;
+            font-size: 1em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .tool-features {
+            text-align: left;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .tool-features ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .tool-features li {
+            color: #707070;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .tool-features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #0055c6;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            color: white;
+            border-radius: 6px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            margin-top: 15px;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 85, 198, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ IT Audit Tools</h1>
+        <p class="subtitle">Professional audit analysis and exceptions register generation</p>
+        
+        <div class="tools-grid">
+            <a href="/sql-audit" class="tool-card">
+                <div class="tool-icon">🔒</div>
+                <div class="tool-title">SQL Server Audit</div>
+                <div class="tool-description">
+                    Generate exceptions registers from SQL Server authorisation analysis CAAT output.
+                </div>
+                <div class="tool-features">
+                    <ul>
+                        <li>Multi-file CSV upload</li>
+                        <li>8 exception categories</li>
+                        <li>Per-environment reports</li>
+                        <li>Axale2 filter support</li>
+                        <li>Combined CSV exports</li>
+                    </ul>
+                </div>
+                <span class="btn-primary">Launch SQL Audit →</span>
+            </a>
+            
+            <a href="/linux-audit" class="tool-card">
+                <div class="tool-icon">🐧</div>
+                <div class="tool-title">Linux Audit Review</div>
+                <div class="tool-description">
+                    Analyze Linux system configurations and generate security findings with exceptions register.
+                </div>
+                <div class="tool-features">
+                    <ul>
+                        <li>ZIP file upload</li>
+                        <li>20+ security controls</li>
+                        <li>Client-side processing</li>
+                        <li>Auto-generated exceptions</li>
+                        <li>CSV & ZIP exports</li>
+                    </ul>
+                </div>
+                <span class="btn-primary">Launch Linux Audit →</span>
+            </a>
+        </div>
+        
+        <div style="margin-top: 60px; padding-top: 40px; border-top: 1px solid #e0e0e0;">
+            <p style="color: #707070; font-size: 0.9em;">
+                Production-ready audit tools for SQL Server and Linux systems
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

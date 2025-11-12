@@ -39,7 +39,13 @@ def allowed_file(filename):
 
 @app.route('/')
 def index():
-    """Render the main upload page."""
+    """Render the landing page with tool selection."""
+    return render_template('landing.html')
+
+
+@app.route('/sql-audit')
+def sql_audit():
+    """Render the SQL audit upload page."""
     return render_template('index.html')
 
 
