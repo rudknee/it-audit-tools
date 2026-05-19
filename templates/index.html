@@ -42,6 +42,27 @@
         .form-group {
             margin-bottom: 25px;
         }
+
+        #iapply-filter-section {
+            display: none;
+            margin-bottom: 25px;
+        }
+
+        #iapply-filter-section.visible {
+            display: block;
+        }
+
+        .iapply-notice {
+            margin: 0;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid #c62828;
+            background: #ffebee;
+            color: #b71c1c;
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 1.45;
+        }
         
         label {
             display: block;
@@ -101,10 +122,79 @@
             border-color: #ffe200;
         }
         
-        .file-name {
+        .file-name-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
             margin-top: 10px;
-            color: #707070;
+            flex-wrap: wrap;
+        }
+
+        .file-name {
+            color: #37373f;
             font-size: 14px;
+            font-weight: 500;
+            flex: 1;
+            min-width: 0;
+            word-break: break-word;
+        }
+
+        .file-clear-btn {
+            flex-shrink: 0;
+            padding: 8px 14px;
+            border: 2px solid #c62828;
+            border-radius: 6px;
+            background: #fff;
+            color: #c62828;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .file-clear-btn:hover {
+            background: #ffebee;
+        }
+
+        .file-clear-btn[hidden] {
+            display: none;
+        }
+
+        .file-row-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .file-row-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #37373f;
+        }
+
+        .file-row-remove-btn {
+            flex-shrink: 0;
+            padding: 8px 14px;
+            border: 2px solid #707070;
+            border-radius: 6px;
+            background: #fff;
+            color: #37373f;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .file-row-remove-btn:hover {
+            background: #f4f4f5;
+            border-color: #37373f;
+        }
+
+        .file-row-remove-btn[hidden] {
+            display: none;
         }
         
         .checkbox-group {
@@ -162,44 +252,68 @@
             font-size: 14px;
             color: #37373f;
         }
+
+        .file-type-error {
+            margin-top: 8px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #b71c1c;
+            background: #ffebee;
+            border-left: 3px solid #c62828;
+        }
+
+        .upload-hint {
+            font-size: 13px;
+            color: #707070;
+            margin-top: 6px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-            <a href="/" style="color: #707070; text-decoration: none; font-weight: 500;">← Home</a>
-            <a href="/linux-audit" style="color: #0055c6; text-decoration: none; font-weight: 500;">🐧 Linux Audit Tool →</a>
-        </div>
-        <h1>🔒 SQL Authorisation Exceptions Generator</h1>
+        {% include 'includes/top_nav.html' with active_page='sql' %}
+        <h1>SQL Authorisation Exceptions Generator</h1>
         <p class="subtitle">Upload your CAAT CSV file to generate an exceptions register</p>
         
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert {{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
         
-        <form method="POST" action="/upload" enctype="multipart/form-data" id="upload-form">
+        <form method="POST" action="{% url 'audit:upload' %}" enctype="multipart/form-data" id="upload-form"
+              data-upload-rules="{{ upload_rules_json }}">
+            {% csrf_token %}
             <div id="file-rows">
                 <div class="file-row" data-index="0" style="margin-bottom: 20px;">
+                    <div class="file-row-header">
+                        <span class="file-row-title">CSV file</span>
+                        <button type="button" class="file-row-remove-btn" hidden>Remove row</button>
+                    </div>
                     <div class="form-group">
                         <label>CSV File *</label>
                         <div class="file-upload">
-                            <input type="file" name="files[]" accept=".csv" required>
+                            <input type="file" name="files[]" required>
                             <label class="file-upload-label">
                                 <strong>📁 Click to select CSV file</strong><br>
                                 <span style="font-size: 14px; color: #707070;">or drag and drop here</span>
                             </label>
-                            <div class="file-name"></div>
+                            <div class="file-name-row">
+                                <div class="file-name"></div>
+                                <button type="button" class="file-clear-btn" hidden>Remove file</button>
+                            </div>
+                            <p class="upload-hint">Only .csv files accepted. Executables, scripts, and other file types are blocked.</p>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Environment Label *</label>
-                        <input type="text" name="env_labels[]" 
-                               placeholder="e.g., axale, axale2, axale3" 
-                               value="axale" required>
+                        <label for="env_label_0">System *</label>
+                        <select id="env_label_0" name="env_labels[]" required>
+                            <option value="">Select system…</option>
+                            <option value="iApply">iApply</option>
+                            <option value="Orbitlite">Orbitlite</option>
+                            <option value="Elma">Elma</option>
+                        </select>
                     </div>
                     <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.08); margin: 10px 0;">
                 </div>
@@ -215,13 +329,12 @@
                 </select>
             </div>
             
-            <div class="form-group">
-                <div class="checkbox-group">
-                    <input type="checkbox" id="apply_axale2_filter" name="apply_axale2_filter" value="true">
-                    <label for="apply_axale2_filter" style="margin: 0;">
-                        Apply axale2 exclusion filter (excludes logins matching ^[A-Z]{2}[0-9]{4}$ from E1-E3)
-                    </label>
-                </div>
+            <div id="iapply-filter-section" class="form-group">
+                <input type="hidden" id="apply_iapply_filter" name="apply_iapply_filter" value="true" disabled>
+                <p id="iapply-filter-notice" class="iapply-notice" role="status" aria-live="polite">
+                    iApply is selected: the exclusion filter is applied automatically for E1–E3
+                    (logins matching ^[A-Z]{2}[0-9]{4}$ are excluded).
+                </p>
             </div>
             
             <button type="submit" class="submit-btn">🚀 Process File</button>
@@ -233,19 +346,160 @@
             • Row 1: Column headers<br>
             • Row 2+: Data rows<br><br>
             The tool will generate two output files (combined across all uploads):<br>
-            • Detailed exceptions CSV (includes Environment column)<br>
+            • Detailed exceptions CSV (includes System column)<br>
             • Summary CSV with counts per environment and exception type
         </div>
     </div>
-    
+
+    {% load static %}
+    <script src="{% static 'audit/upload-validation.js' %}"></script>
     <script>
+        const uploadForm = document.getElementById('upload-form');
+        const uploadRules = JSON.parse(uploadForm.dataset.uploadRules || '{}');
         const fileRows = document.getElementById('file-rows');
         const addRowBtn = document.getElementById('add-row-btn');
+        const iapplyFilterSection = document.getElementById('iapply-filter-section');
+        const {
+            validateUploadFilename,
+            applyAcceptAttribute,
+            showFileError,
+            clearFileError,
+            clearFileSelection,
+            setFileClearVisible,
+        } = window.AuditUploadValidation;
 
-        function wireRow(row) {
+        function validateFileInRow(row, file) {
+            const container = row.querySelector('.file-upload');
             const input = row.querySelector('input[type="file"]');
+            const result = validateUploadFilename(file.name, uploadRules);
+            if (!result.ok) {
+                showFileError(container, result.message);
+                clearFileSelection(container);
+                return false;
+            }
+            clearFileError(container);
+            return true;
+        }
+
+        function handleFileChosen(row, file) {
+            const container = row.querySelector('.file-upload');
             const label = row.querySelector('.file-upload-label');
             const nameEl = row.querySelector('.file-name');
+            if (!file || !validateFileInRow(row, file)) {
+                return;
+            }
+            nameEl.textContent = 'Selected: ' + file.name;
+            label.classList.add('has-file');
+            setFileClearVisible(container, true);
+            updateAddRowButtonVisibility();
+            maybeAddRow();
+        }
+
+        function clearFileInRow(row) {
+            const container = row.querySelector('.file-upload');
+            clearFileSelection(container);
+            updateAddRowButtonVisibility();
+        }
+
+        function reindexFileRows() {
+            fileRows.querySelectorAll('.file-row').forEach((row, index) => {
+                row.setAttribute('data-index', String(index));
+                const select = row.querySelector('select[name="env_labels[]"]');
+                const selectLabel = row.querySelector('.form-group label[for^="env_label"]');
+                if (select) {
+                    const selectId = `env_label_${index}`;
+                    select.id = selectId;
+                    if (selectLabel) {
+                        selectLabel.setAttribute('for', selectId);
+                    }
+                }
+            });
+        }
+
+        function updateRowRemoveButtons() {
+            const rows = fileRows.querySelectorAll('.file-row');
+            const showRemove = rows.length > 1;
+            rows.forEach((row) => {
+                const removeRowBtn = row.querySelector('.file-row-remove-btn');
+                if (removeRowBtn) {
+                    removeRowBtn.hidden = !showRemove;
+                }
+            });
+        }
+
+        function removeFileRow(row) {
+            const rows = fileRows.querySelectorAll('.file-row');
+            if (rows.length <= 1) {
+                return;
+            }
+            row.remove();
+            reindexFileRows();
+            syncIApplyFilterState();
+            updateAddRowButtonVisibility();
+            updateRowRemoveButtons();
+        }
+
+        function updateAddRowButtonVisibility() {
+            const rows = fileRows.querySelectorAll('.file-row');
+            const anySelected = Array.from(rows).some((row) => {
+                const input = row.querySelector('input[type="file"]');
+                return input && input.files.length > 0;
+            });
+            addRowBtn.style.display = anySelected ? 'inline-block' : 'none';
+        }
+        const applyIapplyFilter = document.getElementById('apply_iapply_filter');
+
+        function anyIApplySystemSelected() {
+            return Array.from(document.querySelectorAll('select[name="env_labels[]"]'))
+                .some((select) => select.value === 'iApply');
+        }
+
+        function syncIApplyFilterState() {
+            const iApplySelected = anyIApplySystemSelected();
+            if (iApplySelected) {
+                iapplyFilterSection.classList.add('visible');
+                applyIapplyFilter.disabled = false;
+            } else {
+                iapplyFilterSection.classList.remove('visible');
+                applyIapplyFilter.disabled = true;
+            }
+        }
+
+        function systemSelectHtml(selectId) {
+            const idAttr = selectId ? ` id="${selectId}"` : '';
+            return `
+                    <label${selectId ? ` for="${selectId}"` : ''}>System *</label>
+                    <select${idAttr} name="env_labels[]" required>
+                        <option value="">Select system…</option>
+                        <option value="iApply">iApply</option>
+                        <option value="Orbitlite">Orbitlite</option>
+                        <option value="Elma">Elma</option>
+                    </select>`;
+        }
+
+        function wireRow(row) {
+            const container = row.querySelector('.file-upload');
+            const input = row.querySelector('input[type="file"]');
+            const label = row.querySelector('.file-upload-label');
+            const clearBtn = row.querySelector('.file-clear-btn');
+            applyAcceptAttribute(input, uploadRules);
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    clearFileInRow(row);
+                });
+            }
+
+            const removeRowBtn = row.querySelector('.file-row-remove-btn');
+            if (removeRowBtn) {
+                removeRowBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeFileRow(row);
+                });
+            }
 
             function preventDefaults(e) {
                 e.preventDefault();
@@ -254,24 +508,21 @@
             function highlight() { label.style.background = 'rgba(0, 85, 198, 0.1)'; }
             function unhighlight() { label.style.background = 'rgba(0, 85, 198, 0.05)'; }
             function handleDrop(e) {
-                const dt = e.dataTransfer;
-                const files = dt.files;
+                const files = e.dataTransfer.files;
                 if (files.length > 0) {
-                    input.files = files;
-                    nameEl.textContent = 'Selected: ' + files[0].name;
-                    label.classList.add('has-file');
-                    maybeAddRow();
+                    const file = files[0];
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    input.files = dt.files;
+                    handleFileChosen(row, file);
                 }
             }
 
             input.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
-                    nameEl.textContent = 'Selected: ' + e.target.files[0].name;
-                    label.classList.add('has-file');
-                    maybeAddRow();
+                    handleFileChosen(row, e.target.files[0]);
                 } else {
-                    nameEl.textContent = '';
-                    label.classList.remove('has-file');
+                    clearFileInRow(row);
                 }
             });
 
@@ -290,41 +541,76 @@
             div.setAttribute('data-index', idx.toString());
             div.style.marginBottom = '20px';
             div.innerHTML = `
+                <div class="file-row-header">
+                    <span class="file-row-title">Additional CSV file</span>
+                    <button type="button" class="file-row-remove-btn">Remove row</button>
+                </div>
                 <div class="form-group">
                     <label>CSV File *</label>
                     <div class="file-upload">
-                        <input type="file" name="files[]" accept=".csv" required>
+                        <input type="file" name="files[]">
                         <label class="file-upload-label">
                             <strong>📁 Click to select CSV file</strong><br>
                             <span style="font-size: 14px; color: #707070;">or drag and drop here</span>
                         </label>
-                        <div class="file-name"></div>
+                        <div class="file-name-row">
+                            <div class="file-name"></div>
+                            <button type="button" class="file-clear-btn" hidden>Remove file</button>
+                        </div>
+                        <p class="upload-hint">Only .csv files accepted. Executables, scripts, and other file types are blocked.</p>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Environment Label *</label>
-                    <input type="text" name="env_labels[]" placeholder="e.g., axale, axale2, axale3" value="" required>
+                    ${systemSelectHtml('env_label_' + idx)}
                 </div>
                 <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.08); margin: 10px 0;">
             `;
             fileRows.appendChild(div);
             wireRow(div);
+            reindexFileRows();
+            syncIApplyFilterState();
+            updateRowRemoveButtons();
         }
 
         function maybeAddRow() {
-            const rows = fileRows.querySelectorAll('.file-row');
-            const lastRow = rows[rows.length - 1];
-            const lastInput = lastRow.querySelector('input[type="file"]');
-            if (lastInput && lastInput.files && lastInput.files.length > 0) {
-                addRowBtn.style.display = 'inline-block';
-            }
+            updateAddRowButtonVisibility();
         }
 
         addRowBtn.addEventListener('click', addRow);
 
+        uploadForm.addEventListener('submit', (e) => {
+            const rows = fileRows.querySelectorAll('.file-row');
+            const rowsWithFiles = Array.from(rows).filter((row) => {
+                const input = row.querySelector('input[type="file"]');
+                return input && input.files.length > 0;
+            });
+            if (!rowsWithFiles.length) {
+                e.preventDefault();
+                alert('Please select at least one CSV file to process.');
+                return;
+            }
+            for (const row of rowsWithFiles) {
+                const input = row.querySelector('input[type="file"]');
+                for (const file of input.files) {
+                    if (!validateFileInRow(row, file)) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
+            }
+        });
+
+        fileRows.addEventListener('change', (e) => {
+            if (e.target.matches('select[name="env_labels[]"]')) {
+                syncIApplyFilterState();
+            }
+        });
+
         // Wire initial row
         wireRow(fileRows.querySelector('.file-row'));
-        addRowBtn.style.display = 'none';
+        updateAddRowButtonVisibility();
+        updateRowRemoveButtons();
+        syncIApplyFilterState();
     </script>
 </body>
 </html>

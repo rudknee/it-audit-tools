@@ -43,7 +43,9 @@ https://github.com/yourusername/your-repo-name
 The following files have been committed:
 
 ✅ **Core Application**
-- `app.py` - Flask web application
+- `manage.py` - Django CLI
+- `it_audit_tools/` - Django project (settings, WSGI)
+- `audit/` - Main app (views, URLs)
 - `sql_auth_exceptions.py` - SQL audit logic
 - `requirements.txt` - Python dependencies
 
@@ -54,7 +56,6 @@ The following files have been committed:
 
 ✅ **Documentation**
 - `README.md` - Comprehensive project documentation
-- `README_WEB.md` - Web application specific docs
 - `.gitignore` - Git ignore rules
 
 ## What's Excluded
@@ -75,7 +76,7 @@ Consider adding these topics to your GitHub repository:
 - `security-audit`
 - `sql-server`
 - `linux-security`
-- `flask`
+- `django`
 - `python`
 - `compliance`
 - `it-audit`
@@ -163,7 +164,7 @@ Others can clone your repository:
 git clone https://github.com/yourusername/your-repo-name.git
 cd your-repo-name
 pip install -r requirements.txt
-python3 app.py
+python3 manage.py runserver 0.0.0.0:8000
 ```
 
 ## Troubleshooting
@@ -204,7 +205,7 @@ For deploying to production servers:
 ```bash
 # Install Heroku CLI
 heroku create your-app-name
-heroku config:set SECRET_KEY="your-secret-key"
+heroku config:set DJANGO_SECRET_KEY="your-secret-key"
 git push heroku main
 ```
 
@@ -216,8 +217,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY . .
-EXPOSE 5000
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
+EXPOSE 8000
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8000", "it_audit_tools.wsgi:application"]
 ```
 
 ### Using Ubuntu Server
@@ -229,14 +230,14 @@ pip3 install -r requirements.txt
 pip3 install gunicorn
 
 # Run with gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+gunicorn -w 4 -b 0.0.0.0:8000 it_audit_tools.wsgi:application
 ```
 
 ## Security Checklist
 
 Before deploying to production:
 
-- [ ] Change `SECRET_KEY` in `app.py` or set as environment variable
+- [ ] Set `DJANGO_SECRET_KEY` (and `DJANGO_DEBUG=false`) via environment variables
 - [ ] Review `.gitignore` to ensure no sensitive data is committed
 - [ ] Add authentication if exposing to internet
 - [ ] Configure HTTPS/SSL

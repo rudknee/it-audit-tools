@@ -1,0 +1,85 @@
+{# active_page: home | sql | oracle #}
+<style>
+    .app-top-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e8e8e8;
+    }
+
+    .app-nav-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0 18px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        border: 2px solid transparent;
+        transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+        white-space: nowrap;
+    }
+
+    .app-nav-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 85, 198, 0.18);
+    }
+
+    .app-nav-btn--home {
+        background: #f4f4f5;
+        color: #37373f;
+        border-color: #d4d4d8;
+    }
+
+    .app-nav-btn--home:hover {
+        background: #eaeaec;
+        color: #37373f;
+    }
+
+    .app-nav-btn--sql {
+        background: rgba(0, 85, 198, 0.08);
+        color: #0055c6;
+        border-color: rgba(0, 85, 198, 0.25);
+    }
+
+    .app-nav-btn--sql:hover {
+        background: rgba(0, 85, 198, 0.14);
+        color: #0047a8;
+    }
+
+    .app-nav-btn--oracle {
+        background: rgba(55, 55, 63, 0.08);
+        color: #37373f;
+        border-color: rgba(55, 55, 63, 0.2);
+    }
+
+    .app-nav-btn--oracle:hover {
+        background: rgba(55, 55, 63, 0.14);
+        color: #1f1f24;
+    }
+
+    .app-nav-btn.is-active {
+        background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 4px 14px rgba(0, 85, 198, 0.35);
+        pointer-events: none;
+        cursor: default;
+    }
+
+    .app-nav-btn.is-active:hover {
+        transform: none;
+    }
+</style>
+<nav class="app-top-nav" aria-label="Main navigation">
+    <a href="{% url 'audit:landing' %}"
+       class="app-nav-btn app-nav-btn--home{% if active_page == 'home' %} is-active{% endif %}">Home</a>
+    <a href="{% url 'audit:sql_audit' %}"
+       class="app-nav-btn app-nav-btn--sql{% if active_page == 'sql' %} is-active{% endif %}">SQL Audit</a>
+    <a href="{% url 'audit:oracle_audit' %}"
+       class="app-nav-btn app-nav-btn--oracle{% if active_page == 'oracle' %} is-active{% endif %}">Oracle Audit</a>
+</nav>

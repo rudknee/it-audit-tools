@@ -1,14 +1,14 @@
 # IT Audit Tools - Web Application
 
-A comprehensive web application for generating exceptions registers from IT audit data, supporting both SQL Server and Linux system audits.
+A comprehensive **Django** web application for generating exceptions registers from IT audit data, supporting both SQL Server and Linux system audits.
 
 ## Features
 
 ### SQL Server Authorisation Analysis
 - **Multi-file upload**: Process multiple CAAT CSV files simultaneously
-- **Environment categorization**: Organize exceptions by environment (axale, axale2, axale3, etc.)
+- **Environment categorization**: Organize exceptions by environment (e.g. axale, iApply, axale3)
 - **8 Exception types**: Comprehensive detection of SQL Server authorization issues
-- **Axale2 filter**: Optional exclusion of logins matching `^[A-Z]{2}[0-9]{4}$` pattern
+- **iApply exclusion filter** (CLI/UI flag `apply_iapply_filter`): Optional exclusion of iApply logins matching `^[A-Z]{2}[0-9]{4}$` from E1–E3
 - **Flexible date parsing**: Supports DMY, MDY, and YMD formats
 - **Combined reports**: Download detailed exceptions and summary CSVs
 
@@ -39,23 +39,28 @@ cd it-audit-tools
 pip install -r requirements.txt
 ```
 
-3. Run the application:
+3. Run database migrations (first time only):
 ```bash
-python3 app.py
+python3 manage.py migrate
 ```
 
-4. Open your browser to `http://localhost:5000`
+4. Run the development server:
+```bash
+python3 manage.py runserver 0.0.0.0:8000
+```
+
+5. Open your browser to `http://localhost:8000`
 
 ## Usage
 
 ### SQL Server Audit
 
-1. Navigate to `http://localhost:5000`
+1. Navigate to `http://localhost:8000`
 2. Click "Add File" to upload one or more CAAT CSV files
 3. Enter environment labels for each file
 4. Configure options:
    - Date format (DMY/MDY/YMD)
-   - Axale2 filter (optional)
+   - iApply exclusion filter (optional)
 5. Click "Process Files"
 6. Download results:
    - Combined detailed exceptions CSV
@@ -79,7 +84,7 @@ python3 app.py
 
 ### Linux Audit Review
 
-1. Navigate to `http://localhost:5000/linux-audit`
+1. Navigate to `http://localhost:8000/linux-audit/`
 2. Upload a Linux audit ZIP file
 3. View system summary and findings
 4. Review auto-generated exceptions register
@@ -132,13 +137,20 @@ python3 app.py
 
 ```
 .
-├── app.py                          # Flask application
+├── manage.py                       # Django CLI
+├── it_audit_tools/                 # Project settings & URLs
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── audit/                          # Main web app (views, URLs)
+│   ├── views.py
+│   └── urls.py
 ├── sql_auth_exceptions.py          # SQL audit logic
 ├── templates/
+│   ├── landing.html
 │   ├── index.html                  # SQL audit upload page
 │   ├── results.html                # SQL audit results page
 │   └── linux_audit.html            # Linux audit (client-side)
-├── static/                         # Static assets
 ├── uploads/                        # Temporary upload storage
 ├── outputs/                        # Generated output files
 ├── requirements.txt                # Python dependencies
@@ -149,31 +161,33 @@ python3 app.py
 
 ### Environment Variables
 
-- `SECRET_KEY`: Flask secret key (default: dev key)
-- `MAX_CONTENT_LENGTH`: Max upload size (default: 50MB)
+- `DJANGO_SECRET_KEY`: Django secret key (defaults to an insecure dev key if unset)
+- `DJANGO_DEBUG`: Set to `false` in production
+- `DJANGO_ALLOWED_HOSTS`: Comma-separated hosts (default: `localhost,127.0.0.1`)
 
 Example:
 ```bash
-export SECRET_KEY="your-production-secret-key"
-python3 app.py
+export DJANGO_SECRET_KEY="your-production-secret-key"
+export DJANGO_DEBUG="false"
+export DJANGO_ALLOWED_HOSTS="yourdomain.com,www.yourdomain.com"
+python3 manage.py runserver 0.0.0.0:8000
 ```
 
 ## Development
 
 ### Running in Debug Mode
 
-The application runs in debug mode by default:
 ```bash
-python3 app.py
+python3 manage.py runserver
 ```
 
 ### Production Deployment
 
-For production, use a WSGI server like Gunicorn:
+Use Gunicorn with the Django WSGI application:
 
 ```bash
 pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+gunicorn -w 4 -b 0.0.0.0:8000 it_audit_tools.wsgi:application
 ```
 
 Or with systemd service:
@@ -186,8 +200,9 @@ After=network.target
 [Service]
 User=www-data
 WorkingDirectory=/path/to/it-audit-tools
-Environment="SECRET_KEY=your-secret-key"
-ExecStart=/usr/bin/gunicorn -w 4 -b 0.0.0.0:5000 app:app
+Environment="DJANGO_SECRET_KEY=your-secret-key"
+Environment="DJANGO_DEBUG=false"
+ExecStart=/usr/bin/gunicorn -w 4 -b 0.0.0.0:8000 it_audit_tools.wsgi:application
 
 [Install]
 WantedBy=multi-user.target
@@ -195,7 +210,7 @@ WantedBy=multi-user.target
 
 ## Security Notes
 
-- Change `SECRET_KEY` in production
+- Set `DJANGO_SECRET_KEY` in production
 - Uploaded files are automatically cleaned after processing
 - Output files are stored with unique session IDs
 - Linux audit tool runs entirely client-side (no data sent to server)
@@ -203,21 +218,20 @@ WantedBy=multi-user.target
 
 ## Dependencies
 
-- **Flask** (≥2.0.0): Web framework
-- **Werkzeug** (≥2.0.0): WSGI utilities
+- **Django** (4.2+): Web framework
 - **pandas** (≥1.3.0): Data processing
 - **JSZip** (CDN): Client-side ZIP handling (Linux audit)
 
 ## CLI Tool
 
-The SQL audit module can also be run from command line:
+The SQL audit module can also be run from command line. Use ``--apply-iapply-filter`` to apply the iApply login exclusion to E1–E3.
 
 ```bash
 python3 sql_auth_exceptions.py \
   --input /path/to/caat.csv \
   --output-dir ./output \
   --env-label axale \
-  --apply-axale2-filter true \
+  --apply-iapply-filter true \
   --verbose
 
 # Self-test
@@ -253,6 +267,9 @@ For issues or questions:
 3. Contact the development team
 
 ## Changelog
+
+### Version 1.1.0
+- Migrated web UI from Flask to Django
 
 ### Version 1.0.0
 - SQL Server authorisation analysis with multi-file support

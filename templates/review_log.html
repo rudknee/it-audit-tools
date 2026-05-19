@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Run Log - Database Review Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 { color: #37373f; margin-bottom: 10px; font-size: 2em; }
+        .subtitle { color: #707070; margin-bottom: 24px; font-size: 1.1em; }
+
+        .summary-box {
+            background: rgba(0, 85, 198, 0.05);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            border-left: 4px solid #0055c6;
+        }
+
+        .summary-box h3 { color: #37373f; margin-bottom: 12px; }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .summary-item { color: #707070; font-size: 14px; }
+        .summary-item strong { color: #37373f; display: block; font-size: 1.25em; }
+
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #37373f;
+            margin-bottom: 4px;
+        }
+
+        .filter-group select,
+        .filter-group input[type="text"] {
+            padding: 8px 12px;
+            border: 2px solid #707070;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 140px;
+        }
+
+        .filter-group input[type="text"] { min-width: 220px; }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #0055c6;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #707070;
+            color: white;
+        }
+
+        .table-section { margin-bottom: 24px; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            color: white;
+        }
+
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            vertical-align: top;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tbody tr:hover { background: #f5f5f5; }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-sql { background: rgba(0, 85, 198, 0.15); color: #0055c6; }
+        .badge-oracle { background: rgba(55, 55, 63, 0.12); color: #37373f; }
+        .badge-success { background: rgba(46, 125, 50, 0.15); color: #2e7d32; }
+        .badge-failed { background: rgba(198, 40, 40, 0.12); color: #c62828; }
+
+        .cell-muted { color: #707070; font-size: 13px; }
+        .cell-error {
+            color: #c62828;
+            font-size: 13px;
+            max-width: 280px;
+            word-break: break-word;
+        }
+
+        .cell-files {
+            max-width: 200px;
+            word-break: break-word;
+            font-size: 13px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 20px;
+            color: #707070;
+        }
+
+        .pagination {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .pagination a,
+        .pagination span {
+            padding: 8px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .pagination a {
+            background: #f0f0f0;
+            color: #0055c6;
+            font-weight: 500;
+        }
+
+        .pagination a:hover { background: #e0e0e0; }
+        .pagination .current {
+            background: #0055c6;
+            color: white;
+            font-weight: 600;
+        }
+
+        .pagination .disabled {
+            color: #aaa;
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% include 'includes/top_nav.html' %}
+
+        <h1>Review Run Log</h1>
+        <p class="subtitle">History of SQL and Oracle database reviews run through this application</p>
+
+        <div class="summary-box">
+            <h3>Overview</h3>
+            <div class="summary-grid">
+                <div class="summary-item"><strong>{{ stats.total }}</strong> Total runs</div>
+                <div class="summary-item"><strong>{{ stats.success }}</strong> Successful</div>
+                <div class="summary-item"><strong>{{ stats.failed }}</strong> Failed</div>
+                <div class="summary-item"><strong>{{ stats.sql_count }}</strong> SQL reviews</div>
+                <div class="summary-item"><strong>{{ stats.oracle_count }}</strong> Oracle reviews</div>
+            </div>
+        </div>
+
+        <form method="get" class="filters">
+            <div class="filter-group">
+                <label for="type">Review type</label>
+                <select name="type" id="type">
+                    <option value="">All</option>
+                    <option value="sql" {% if filter_type == 'sql' %}selected{% endif %}>SQL Server</option>
+                    <option value="oracle" {% if filter_type == 'oracle' %}selected{% endif %}>Oracle</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="status">Status</label>
+                <select name="status" id="status">
+                    <option value="">All</option>
+                    <option value="success" {% if filter_status == 'success' %}selected{% endif %}>Success</option>
+                    <option value="failed" {% if filter_status == 'failed' %}selected{% endif %}>Failed</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="q">Search</label>
+                <input type="text" name="q" id="q" value="{{ filter_query }}"
+                       placeholder="System, file, session ID…">
+            </div>
+            <button type="submit" class="btn btn-primary">Apply filters</button>
+            <a href="{% url 'audit:review_log' %}" class="btn btn-secondary">Clear</a>
+        </form>
+
+        <div class="table-section">
+            {% if page_obj.object_list %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>When</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>System</th>
+                        <th>Files</th>
+                        <th>Results</th>
+                        <th>Duration</th>
+                        <th>Session</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in page_obj %}
+                    <tr>
+                        <td class="cell-muted">{{ log.started_at|date:"Y-m-d H:i:s" }}</td>
+                        <td>
+                            <span class="badge {% if log.review_type == 'sql' %}badge-sql{% else %}badge-oracle{% endif %}">
+                                {{ log.get_review_type_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge {% if log.status == 'success' %}badge-success{% else %}badge-failed{% endif %}">
+                                {{ log.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ log.systems|default:"—" }}</td>
+                        <td class="cell-files">{{ log.source_filenames|default:"—" }}</td>
+                        <td class="cell-muted">
+                            {{ log.metrics_display }}
+                            {% if log.review_type == 'sql' and log.iapply_filter_applied %}
+                            <br><span style="color:#0055c6;">iApply filter on</span>
+                            {% endif %}
+                            {% if log.status == 'failed' and log.error_message %}
+                            <div class="cell-error">{{ log.error_message }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="cell-muted">{{ log.duration_display }}</td>
+                        <td class="cell-muted">{% if log.session_id %}{{ log.session_id }}{% else %}—{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <div class="pagination">
+                {% if page_obj.has_previous %}
+                <a href="?page=1{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_query %}&q={{ filter_query|urlencode }}{% endif %}">First</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_query %}&q={{ filter_query|urlencode }}{% endif %}">Previous</a>
+                {% else %}
+                <span class="disabled">First</span>
+                <span class="disabled">Previous</span>
+                {% endif %}
+
+                <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_query %}&q={{ filter_query|urlencode }}{% endif %}">Next</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_query %}&q={{ filter_query|urlencode }}{% endif %}">Last</a>
+                {% else %}
+                <span class="disabled">Next</span>
+                <span class="disabled">Last</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="empty-state">
+                <p><strong>No review runs recorded yet.</strong></p>
+                <p style="margin-top:8px;">Run a SQL or Oracle audit to populate this log.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

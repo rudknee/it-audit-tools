@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle Audit Review Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #37373f;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .subtitle {
+            color: #707070;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        #oracle-upload-panel {
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 22px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #37373f;
+            font-weight: 500;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #707070;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #0055c6;
+        }
+
+        .file-upload {
+            position: relative;
+            display: block;
+            width: 100%;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px dashed #0055c6;
+            border-radius: 8px;
+            background: rgba(0, 85, 198, 0.05);
+        }
+
+        .file-upload-label:hover {
+            background: rgba(0, 85, 198, 0.1);
+        }
+
+        .file-upload-label.has-file {
+            background: rgba(255, 226, 0, 0.15);
+            border-color: #ffe200;
+        }
+
+        .file-type-error {
+            margin-top: 10px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #b71c1c;
+            background: #ffebee;
+            border-left: 3px solid #c62828;
+        }
+
+        .upload-hint {
+            font-size: 13px;
+            color: #707070;
+            margin-top: 6px;
+        }
+
+        .file-name-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .file-name {
+            color: #37373f;
+            font-size: 14px;
+            font-weight: 500;
+            flex: 1;
+            min-width: 0;
+            word-break: break-word;
+        }
+
+        .file-clear-btn {
+            flex-shrink: 0;
+            padding: 8px 14px;
+            border: 2px solid #c62828;
+            border-radius: 6px;
+            background: #fff;
+            color: #c62828;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .file-clear-btn:hover {
+            background: #ffebee;
+        }
+
+        .file-clear-btn[hidden] {
+            display: none;
+        }
+
+        .file-row-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .file-row-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #37373f;
+        }
+
+        .file-row-remove-btn {
+            flex-shrink: 0;
+            padding: 8px 14px;
+            border: 2px solid #707070;
+            border-radius: 6px;
+            background: #fff;
+            color: #37373f;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .file-row-remove-btn:hover {
+            background: #f4f4f5;
+        }
+
+        .file-row-remove-btn[hidden] {
+            display: none;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 85, 198, 0.4);
+        }
+
+        .submit-btn--secondary {
+            background: linear-gradient(135deg, #ffe200 0%, #37373f 100%);
+            color: #37373f;
+        }
+
+        .summary-host-block {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            margin-bottom: 12px;
+        }
+
+        .summary-host-block:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .summary-box {
+            background: rgba(0, 85, 198, 0.05);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #0055c6;
+        }
+        
+        .summary-box h3 {
+            color: #37373f;
+            margin-bottom: 15px;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .summary-item {
+            color: #707070;
+        }
+        
+        .summary-item strong {
+            color: #37373f;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .alert.warning {
+            background: rgba(255, 226, 0, 0.15);
+            color: #37373f;
+            border-left: 4px solid #ffe200;
+        }
+        
+        .alert.error {
+            background: rgba(240, 69, 58, 0.1);
+            color: #f0453a;
+            border-left: 4px solid #f0453a;
+        }
+        
+        .table-section {
+            margin-bottom: 40px;
+        }
+        
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .table-header h2 {
+            color: #37373f;
+            font-size: 1.5em;
+        }
+        
+        .search-box {
+            padding: 8px 12px;
+            border: 2px solid #707070;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 250px;
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: #0055c6;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 85, 198, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #707070;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #37373f;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        thead {
+            background: linear-gradient(135deg, #0055c6 0%, #37373f 100%);
+            color: white;
+        }
+        
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        th:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        td.cell-accounts {
+            max-width: 360px;
+            word-break: break-word;
+            font-size: 13px;
+            color: #37373f;
+        }
+        
+        td.cell-configuration {
+            max-width: 280px;
+            word-break: break-word;
+            font-size: 13px;
+            color: #37373f;
+        }
+        
+        td.cell-finding-detail {
+            word-break: break-word;
+            vertical-align: top;
+        }
+        
+        td.cell-finding-detail strong {
+            font-weight: 700;
+            color: #2d2d33;
+        }
+        
+        tbody tr:hover {
+            background: #f5f5f5;
+        }
+        
+        /* Denser typography for audit tables (long detail text) */
+        #summarySection {
+            font-size: 0.875rem;
+        }
+        
+        #summarySection .summary-box h3 {
+            font-size: 1.15rem;
+        }
+        
+        #resultsSection {
+            font-size: 0.8125rem;
+            line-height: 1.35;
+        }
+        
+        #resultsSection .table-header h2 {
+            font-size: 1.2rem;
+        }
+        
+        #resultsSection .search-box {
+            font-size: 12px;
+            padding: 6px 10px;
+        }
+        
+        #resultsSection table th,
+        #resultsSection table td {
+            padding: 7px 9px;
+            font-size: 0.8125rem;
+        }
+        
+        #resultsSection .status-badge,
+        #resultsSection .risk-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+        }
+        
+        #resultsSection td.cell-accounts {
+            font-size: 0.75rem;
+        }
+        
+        #resultsSection td.cell-configuration {
+            font-size: 0.75rem;
+        }
+        
+        #resultsSection td.cell-finding-detail {
+            font-size: 0.75rem;
+        }
+        
+        #resultsSection .btn {
+            font-size: 12px;
+            padding: 8px 14px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-compliant {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+        
+        .status-partial {
+            background: rgba(255, 226, 0, 0.2);
+            color: #37373f;
+        }
+        
+        .status-noncompliant {
+            background: rgba(240, 69, 58, 0.2);
+            color: #f0453a;
+        }
+        
+        .status-review {
+            background: rgba(0, 85, 198, 0.2);
+            color: #0055c6;
+        }
+        
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .risk-low {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+        
+        .risk-medium {
+            background: rgba(255, 226, 0, 0.2);
+            color: #37373f;
+        }
+        
+        .risk-high {
+            background: rgba(240, 69, 58, 0.2);
+            color: #f0453a;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #707070;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(55, 55, 63, 0.72);
+            backdrop-filter: blur(4px);
+        }
+        
+        .loading-overlay.hidden {
+            display: none;
+        }
+        
+        .loading-inner {
+            background: white;
+            padding: 32px 40px;
+            border-radius: 12px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+            text-align: center;
+            min-width: 260px;
+        }
+        
+        .loading-inner p {
+            margin: 0;
+            color: #37373f;
+            font-weight: 600;
+            font-size: 15px;
+        }
+        
+        .loading-inner .loading-sub {
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 400;
+            color: #707070;
+        }
+        
+        .spinner {
+            width: 44px;
+            height: 44px;
+            margin: 0 auto 20px;
+            border: 3px solid rgba(0, 85, 198, 0.2);
+            border-top-color: #0055c6;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% include 'includes/top_nav.html' with active_page='oracle' %}
+        <h1>Oracle Audit Review Tool</h1>
+        <div id="oracle-upload-panel">
+            <p class="subtitle" id="oracle-upload-subtitle">Upload Oracle audit ZIP files and assign each to a system</p>
+
+            <form id="oracle-upload-form" data-upload-rules="{{ upload_rules_json }}">
+                {% csrf_token %}
+                <div id="file-rows">
+                    <div class="file-row" data-index="0" style="margin-bottom: 20px;">
+                        <div class="file-row-header">
+                            <span class="file-row-title">Audit ZIP</span>
+                            <button type="button" class="file-row-remove-btn" hidden>Remove row</button>
+                        </div>
+                        <div class="form-group">
+                            <label>ZIP file *</label>
+                            <div class="file-upload">
+                                <input type="file" name="files[]" accept=".zip">
+                                <label class="file-upload-label">
+                                    <strong>📁 Click to select Oracle audit ZIP</strong><br>
+                                    <span style="font-size: 14px; color: #707070;">or drag and drop here</span>
+                                </label>
+                                <div class="file-name-row">
+                                    <div class="file-name"></div>
+                                    <button type="button" class="file-clear-btn" hidden>Remove file</button>
+                                </div>
+                                <p class="upload-hint">Only .zip files accepted. Executables, scripts, and other archives are blocked.</p>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="env_label_0">System *</label>
+                            <select id="env_label_0" name="env_labels[]" required>
+                                <option value="">Select system…</option>
+                                <option value="iApply">iApply</option>
+                                <option value="Orbitlite">Orbitlite</option>
+                                <option value="Elma">Elma</option>
+                            </select>
+                        </div>
+                        <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.08); margin: 10px 0;">
+                    </div>
+                </div>
+                <button type="button" id="add-row-btn" class="submit-btn submit-btn--secondary" style="margin-bottom: 15px;" hidden>➕ Add another file</button>
+                <button type="submit" class="submit-btn">🚀 Run review</button>
+            </form>
+        </div>
+
+        <div id="alerts"></div>
+        
+        <div id="summarySection" class="hidden">
+            <div class="summary-box">
+                <h3>System Summary</h3>
+                <div class="summary-grid" id="summaryGrid"></div>
+            </div>
+        </div>
+        
+        <div id="resultsSection" class="hidden">
+            <div class="table-section">
+                <div class="table-header">
+                    <h2>Findings</h2>
+                    <div class="btn-group">
+                        <input type="text" id="findingsSearch" class="search-box" placeholder="Search findings...">
+                        <button class="btn btn-primary" onclick="exportFindingsCSV()">Export Findings CSV</button>
+                    </div>
+                </div>
+                <div id="findingsTableContainer"></div>
+            </div>
+
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="btn btn-primary" onclick="exportCombinedZIP()">Download Combined ZIP</button>
+                <button class="btn btn-secondary" onclick="reset()">Reset</button>
+            </div>
+        </div>
+        
+        <div id="loadingSection" class="loading-overlay hidden" aria-live="polite" aria-busy="true">
+            <div class="loading-inner">
+                <div class="spinner" role="presentation"></div>
+                <p>Processing Oracle audit ZIP…</p>
+                <p class="loading-sub">Reading configuration files and building findings.</p>
+            </div>
+        </div>
+    </div>
+    
+    {% load static %}
+    <script src="{% static 'audit/upload-validation.js' %}"></script>
+    <script>
+        const oracleUploadForm = document.getElementById('oracle-upload-form');
+        const uploadRules = JSON.parse(oracleUploadForm.dataset.uploadRules || '{}');
+        const fileRows = document.getElementById('file-rows');
+        const addRowBtn = document.getElementById('add-row-btn');
+        const {
+            validateUploadFilename,
+            applyAcceptAttribute,
+            showFileError,
+            clearFileError,
+            clearFileSelection,
+            setFileClearVisible,
+        } = window.AuditUploadValidation;
+
+        // Global state
+        let systemSummaries = [];
+        let findings = [];
+        let currentSort = { column: null, direction: 'asc' };
+        let tableSearchListenersBound = false;
+        let showSystemColumn = false;
+
+        const ORACLE_AUDIT_PROCESS_URL = '{% url "audit:oracle_audit_process" %}';
+
+        function validateFileInRow(row, file) {
+            const container = row.querySelector('.file-upload');
+            const result = validateUploadFilename(file.name, uploadRules);
+            if (!result.ok) {
+                showFileError(container, result.message);
+                clearFileSelection(container);
+                return false;
+            }
+            clearFileError(container);
+            return true;
+        }
+
+        function handleFileChosen(row, file) {
+            const container = row.querySelector('.file-upload');
+            const label = row.querySelector('.file-upload-label');
+            const nameEl = row.querySelector('.file-name');
+            if (!file || !validateFileInRow(row, file)) {
+                return;
+            }
+            nameEl.textContent = 'Selected: ' + file.name;
+            label.classList.add('has-file');
+            setFileClearVisible(container, true);
+            updateAddRowButtonVisibility();
+        }
+
+        function clearFileInRow(row) {
+            clearFileSelection(row.querySelector('.file-upload'));
+            updateAddRowButtonVisibility();
+        }
+
+        function reindexFileRows() {
+            fileRows.querySelectorAll('.file-row').forEach((row, index) => {
+                row.setAttribute('data-index', String(index));
+                const select = row.querySelector('select[name="env_labels[]"]');
+                const selectLabel = row.querySelector('.form-group label[for^="env_label"]');
+                if (select) {
+                    const selectId = `env_label_${index}`;
+                    select.id = selectId;
+                    if (selectLabel) {
+                        selectLabel.setAttribute('for', selectId);
+                    }
+                }
+            });
+        }
+
+        function updateRowRemoveButtons() {
+            const rows = fileRows.querySelectorAll('.file-row');
+            const showRemove = rows.length > 1;
+            rows.forEach((row) => {
+                const removeRowBtn = row.querySelector('.file-row-remove-btn');
+                if (removeRowBtn) {
+                    removeRowBtn.hidden = !showRemove;
+                }
+            });
+        }
+
+        function removeFileRow(row) {
+            if (fileRows.querySelectorAll('.file-row').length <= 1) {
+                return;
+            }
+            row.remove();
+            reindexFileRows();
+            updateAddRowButtonVisibility();
+            updateRowRemoveButtons();
+        }
+
+        function updateAddRowButtonVisibility() {
+            const anySelected = Array.from(fileRows.querySelectorAll('.file-row')).some((row) => {
+                const input = row.querySelector('input[type="file"]');
+                return input && input.files.length > 0;
+            });
+            addRowBtn.hidden = !anySelected;
+        }
+
+        function systemSelectHtml(selectId) {
+            const idAttr = selectId ? ` id="${selectId}"` : '';
+            return `
+                <label${selectId ? ` for="${selectId}"` : ''}>System *</label>
+                <select${idAttr} name="env_labels[]" required>
+                    <option value="">Select system…</option>
+                    <option value="iApply">iApply</option>
+                    <option value="Orbitlite">Orbitlite</option>
+                    <option value="Elma">Elma</option>
+                </select>`;
+        }
+
+        function wireRow(row) {
+            const container = row.querySelector('.file-upload');
+            const input = row.querySelector('input[type="file"]');
+            const label = row.querySelector('.file-upload-label');
+            const clearBtn = row.querySelector('.file-clear-btn');
+            const removeRowBtn = row.querySelector('.file-row-remove-btn');
+            applyAcceptAttribute(input, uploadRules);
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    clearFileInRow(row);
+                });
+            }
+            if (removeRowBtn) {
+                removeRowBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeFileRow(row);
+                });
+            }
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            function highlight() { label.style.background = 'rgba(0, 85, 198, 0.1)'; }
+            function unhighlight() { label.style.background = 'rgba(0, 85, 198, 0.05)'; }
+            function handleDrop(e) {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    input.files = dt.files;
+                    handleFileChosen(row, file);
+                }
+            }
+
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileChosen(row, e.target.files[0]);
+                } else {
+                    clearFileInRow(row);
+                }
+            });
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
+                label.addEventListener(eventName, preventDefaults, false);
+            });
+            ['dragenter', 'dragover'].forEach((eventName) => label.addEventListener(eventName, highlight, false));
+            ['dragleave', 'drop'].forEach((eventName) => label.addEventListener(eventName, unhighlight, false));
+            label.addEventListener('drop', handleDrop, false);
+        }
+
+        function addRow() {
+            const idx = fileRows.querySelectorAll('.file-row').length;
+            const div = document.createElement('div');
+            div.className = 'file-row';
+            div.setAttribute('data-index', idx.toString());
+            div.style.marginBottom = '20px';
+            div.innerHTML = `
+                <div class="file-row-header">
+                    <span class="file-row-title">Additional audit ZIP</span>
+                    <button type="button" class="file-row-remove-btn">Remove row</button>
+                </div>
+                <div class="form-group">
+                    <label>ZIP file *</label>
+                    <div class="file-upload">
+                        <input type="file" name="files[]">
+                        <label class="file-upload-label">
+                            <strong>📁 Click to select Oracle audit ZIP</strong><br>
+                            <span style="font-size: 14px; color: #707070;">or drag and drop here</span>
+                        </label>
+                        <div class="file-name-row">
+                            <div class="file-name"></div>
+                            <button type="button" class="file-clear-btn" hidden>Remove file</button>
+                        </div>
+                        <p class="upload-hint">Only .zip files accepted. Executables, scripts, and other archives are blocked.</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    ${systemSelectHtml('env_label_' + idx)}
+                </div>
+                <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.08); margin: 10px 0;">
+            `;
+            fileRows.appendChild(div);
+            wireRow(div);
+            reindexFileRows();
+            updateRowRemoveButtons();
+        }
+
+        addRowBtn.addEventListener('click', addRow);
+
+        oracleUploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearAlerts();
+
+            const rows = fileRows.querySelectorAll('.file-row');
+            const rowsWithFiles = [];
+            for (const row of rows) {
+                const input = row.querySelector('input[type="file"]');
+                const select = row.querySelector('select[name="env_labels[]"]');
+                if (!input || !input.files.length) {
+                    continue;
+                }
+                for (const file of input.files) {
+                    if (!validateFileInRow(row, file)) {
+                        return;
+                    }
+                }
+                if (!select || !select.value) {
+                    showAlert('error', 'Please select a system for each uploaded ZIP file.');
+                    return;
+                }
+                rowsWithFiles.push({ row, input, select });
+            }
+
+            if (!rowsWithFiles.length) {
+                showAlert('error', 'Please select at least one ZIP file to process.');
+                return;
+            }
+
+            showLoading();
+            try {
+                const formData = new FormData();
+                rowsWithFiles.forEach(({ input, select }) => {
+                    formData.append('files[]', input.files[0], input.files[0].name);
+                    formData.append('env_labels[]', select.value);
+                });
+                const csrfin = oracleUploadForm.querySelector('input[name="csrfmiddlewaretoken"]');
+                if (csrfin) {
+                    formData.append('csrfmiddlewaretoken', csrfin.value);
+                }
+                const res = await fetch(ORACLE_AUDIT_PROCESS_URL, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || res.statusText || 'Request failed');
+                }
+                systemSummaries = data.summaries || [];
+                findings = data.findings || [];
+                showSystemColumn = systemSummaries.length > 1;
+                displayResults();
+            } catch (error) {
+                showAlert('error', `Error processing ZIP: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        });
+
+        wireRow(fileRows.querySelector('.file-row'));
+        updateAddRowButtonVisibility();
+        updateRowRemoveButtons();
+
+        function findingsStatusBadgeClass(status) {
+            if (!status) return 'status-badge';
+            const s = status.toLowerCase();
+            if (s.startsWith('non-compliant')) return 'status-badge status-noncompliant';
+            if (s === 'partially compliant') return 'status-badge status-partial';
+            if (s === 'compliant') return 'status-badge status-compliant';
+            if (s === 'review') return 'status-badge status-review';
+            return 'status-badge status-review';
+        }
+
+        /** Lower rank = shown first (issues on top). */
+        function findingsStatusSortRank(status) {
+            if (!status) return 99;
+            const s = status.toLowerCase();
+            if (s.startsWith('non-compliant')) return 0;
+            if (s === 'partially compliant') return 1;
+            if (s === 'review') return 2;
+            if (s === 'compliant') return 3;
+            return 4;
+        }
+
+        function sortFindingsByStatusPriority() {
+            findings.sort((a, b) => {
+                const diff = findingsStatusSortRank(a.status) - findingsStatusSortRank(b.status);
+                if (diff !== 0) return diff;
+                return (a.control || '').localeCompare(b.control || '');
+            });
+            currentSort = { column: 'status', direction: 'asc' };
+        }
+        
+        function setUploadPanelVisible(visible) {
+            document.getElementById('oracle-upload-panel').classList.toggle('hidden', !visible);
+        }
+
+        function displayResults() {
+            setUploadPanelVisible(false);
+            document.getElementById('summarySection').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+            
+            // Display summary
+            const summaryGrid = document.getElementById('summaryGrid');
+            if (systemSummaries.length) {
+                summaryGrid.innerHTML = systemSummaries.map((s) => `
+                    <div class="summary-host-block">
+                        <div class="summary-item"><strong>System:</strong> ${escapeHtml(s.system || 'N/A')}</div>
+                        <div class="summary-item"><strong>File:</strong> ${escapeHtml(s.filename || 'N/A')}</div>
+                        <div class="summary-item"><strong>Hostname:</strong> ${escapeHtml(s.hostname || 'N/A')}</div>
+                        <div class="summary-item"><strong>OS:</strong> ${escapeHtml(s.os || 'N/A')}</div>
+                        <div class="summary-item"><strong>OS Version:</strong> ${escapeHtml(s.osVersion || 'N/A')}</div>
+                        <div class="summary-item"><strong>Script Date:</strong> ${escapeHtml(s.scriptDate || 'N/A')}</div>
+                    </div>
+                `).join('');
+            } else {
+                summaryGrid.innerHTML = '<div class="summary-item">No summary data available.</div>';
+            }
+
+            displayFindingsTable();
+
+            if (!tableSearchListenersBound) {
+                tableSearchListenersBound = true;
+                document.getElementById('findingsSearch').addEventListener('input', (e) => {
+                    filterTable('findings', e.target.value);
+                });
+            }
+        }
+        
+        function displayFindingsTable() {
+            const container = document.getElementById('findingsTableContainer');
+            let html = '<table><thead><tr>';
+            if (showSystemColumn) {
+                html += '<th onclick="sortTable(\'findings\', \'system\')">System</th>';
+            }
+            html += '<th onclick="sortTable(\'findings\', \'control\')">Control</th>';
+            html += '<th onclick="sortTable(\'findings\', \'status\')">Status</th>';
+            html += '<th onclick="sortTable(\'findings\', \'risk\')">Risk</th>';
+            html += '<th onclick="sortTable(\'findings\', \'configuration\')">Configuration found</th>';
+            html += '<th>Detail</th>';
+            html += '<th>Recommendation</th>';
+            html += '</tr></thead><tbody id="findingsTableBody"></tbody></table>';
+            container.innerHTML = html;
+            
+            sortFindingsByStatusPriority();
+            renderFindingsRows();
+        }
+        
+        function renderFindingsRows() {
+            const tbody = document.getElementById('findingsTableBody');
+            tbody.innerHTML = findings.map(f => `
+                <tr>
+                    ${showSystemColumn ? `<td>${escapeHtml(f.system || '—')}</td>` : ''}
+                    <td>${escapeHtml(f.control)}</td>
+                    <td><span class="${findingsStatusBadgeClass(f.status)}">${escapeHtml(f.status)}</span></td>
+                    <td><span class="risk-badge risk-${f.risk.toLowerCase()}">${escapeHtml(f.risk)}</span></td>
+                    <td class="cell-configuration">${escapeHtml(f.configuration || '—')}</td>
+                    <td class="cell-finding-detail">${formatFindingDetail(f.detail)}</td>
+                    <td>${escapeHtml(f.recommendation)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        function sortTable(type, column) {
+            if (type !== 'findings') {
+                return;
+            }
+            const direction = currentSort.column === column && currentSort.direction === 'asc' ? 'desc' : 'asc';
+
+            findings.sort((a, b) => {
+                let comparison;
+                if (column === 'status') {
+                    comparison = findingsStatusSortRank(a.status) - findingsStatusSortRank(b.status);
+                    if (comparison === 0) {
+                        comparison = (a.control || '').localeCompare(b.control || '');
+                    }
+                } else {
+                    const aVal = a[column] || '';
+                    const bVal = b[column] || '';
+                    comparison = aVal.toString().localeCompare(bVal.toString());
+                }
+                return direction === 'asc' ? comparison : -comparison;
+            });
+
+            currentSort = { column, direction };
+            renderFindingsRows();
+        }
+        
+        function filterTable(type, searchTerm) {
+            const search = searchTerm.toLowerCase();
+            const tbody = document.getElementById(`${type}TableBody`);
+            const rows = tbody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(search) ? '' : 'none';
+            });
+        }
+        
+        function exportFindingsCSV() {
+            const cols = ['control', 'status', 'risk', 'configuration', 'detail', 'recommendation'];
+            if (showSystemColumn) {
+                cols.unshift('system');
+            }
+            exportToCSV(findings, 'oracle_audit_findings.csv', cols);
+        }
+
+        function exportToCSV(data, filename, columns) {
+            const headers = columns.join(',');
+            const rows = data.map(item => 
+                columns.map(col => {
+                    const value = item[col] || '';
+                    // Escape quotes and wrap in quotes if contains comma, quote, or newline
+                    const escaped = value.toString().replace(/"/g, '""');
+                    return /[,"\n]/.test(escaped) ? `"${escaped}"` : escaped;
+                }).join(',')
+            );
+            
+            const csv = [headers, ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+        
+        async function exportCombinedZIP() {
+            const zip = new JSZip();
+            const findingsCols = ['control', 'status', 'risk', 'configuration', 'detail', 'recommendation'];
+            if (showSystemColumn) {
+                findingsCols.unshift('system');
+            }
+            zip.file('oracle_audit_findings.csv', generateCSV(findings, findingsCols));
+
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'oracle_audit_outputs.zip';
+            link.click();
+        }
+        
+        function generateCSV(data, columns) {
+            const headers = columns.join(',');
+            const rows = data.map(item => 
+                columns.map(col => {
+                    const value = item[col] || '';
+                    const escaped = value.toString().replace(/"/g, '""');
+                    return /[,"\n]/.test(escaped) ? `"${escaped}"` : escaped;
+                }).join(',')
+            );
+            return [headers, ...rows].join('\n');
+        }
+        
+        function reset() {
+            fileRows.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = 'file-row';
+            div.setAttribute('data-index', '0');
+            div.style.marginBottom = '20px';
+            div.innerHTML = `
+                <div class="file-row-header">
+                    <span class="file-row-title">Audit ZIP</span>
+                    <button type="button" class="file-row-remove-btn" hidden>Remove row</button>
+                </div>
+                <div class="form-group">
+                    <label>ZIP file *</label>
+                    <div class="file-upload">
+                        <input type="file" name="files[]">
+                        <label class="file-upload-label">
+                            <strong>📁 Click to select Oracle audit ZIP</strong><br>
+                            <span style="font-size: 14px; color: #707070;">or drag and drop here</span>
+                        </label>
+                        <div class="file-name-row">
+                            <div class="file-name"></div>
+                            <button type="button" class="file-clear-btn" hidden>Remove file</button>
+                        </div>
+                        <p class="upload-hint">Only .zip files accepted. Executables, scripts, and other archives are blocked.</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="env_label_0">System *</label>
+                    <select id="env_label_0" name="env_labels[]" required>
+                        <option value="">Select system…</option>
+                        <option value="iApply">iApply</option>
+                        <option value="Orbitlite">Orbitlite</option>
+                        <option value="Elma">Elma</option>
+                    </select>
+                </div>
+                <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.08); margin: 10px 0;">
+            `;
+            fileRows.appendChild(div);
+            wireRow(div);
+            updateAddRowButtonVisibility();
+            updateRowRemoveButtons();
+            setUploadPanelVisible(true);
+            document.getElementById('summarySection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            clearAlerts();
+            findings = [];
+            systemSummaries = [];
+            showSystemColumn = false;
+        }
+        
+        function showLoading() {
+            const el = document.getElementById('loadingSection');
+            el.classList.remove('hidden');
+            el.setAttribute('aria-busy', 'true');
+            setUploadPanelVisible(false);
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('summarySection').classList.add('hidden');
+        }
+        
+        function hideLoading() {
+            const el = document.getElementById('loadingSection');
+            el.classList.add('hidden');
+            el.setAttribute('aria-busy', 'false');
+            const resultsVisible = !document.getElementById('resultsSection').classList.contains('hidden');
+            if (!resultsVisible) {
+                setUploadPanelVisible(true);
+            }
+        }
+        
+        function showAlert(type, message) {
+            const alerts = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            alerts.appendChild(alert);
+        }
+        
+        function clearAlerts() {
+            document.getElementById('alerts').innerHTML = '';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function formatFindingDetail(detail) {
+            if (detail == null || detail === '') {
+                return escapeHtml('—');
+            }
+            const marker = 'Observed: ';
+            const i = detail.indexOf(marker);
+            if (i === -1) {
+                return escapeHtml(detail);
+            }
+            const intro = detail.slice(0, i).trimEnd();
+            const observed = detail.slice(i + marker.length);
+            return escapeHtml(intro) + '<br><strong>Observed: ' + escapeHtml(observed) + '</strong>';
+        }
+    </script>
+</body>
+</html>
+

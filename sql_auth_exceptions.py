@@ -5,14 +5,26 @@ SQL Server Authorisation Analysis - Exceptions Register Generator
 This tool ingests CSV output from IT-Audit-Tools_MSSQL_Script_v3.10 and produces
 an exceptions register with detailed findings and summary statistics.
 
+Exception categories:
+    E1  SQL logins without password policy enforced.
+    E2  SQL logins without password expiration configured.
+    E3  Active logins with passwords older than 365 days.
+    E4  Powerful server roles / permissions (e.g. sysadmin, CONTROL SERVER).
+    E5  Membership in the db_owner database role.
+    E6  Direct object-level grants to users (not via standard roles).
+    E7  Orphaned database users with no matching login.
+    E8  Disabled accounts that still retain powerful access.
+
 Usage:
     python sql_auth_exceptions.py \\
       --input /path/to/caat.csv \\
       --output-dir /path/to/out \\
       --env-label axale3 \\
-      [--apply-axale2-filter true|false] \\
+      [--apply-iapply-filter true|false] \\
       [--date-format DMY|MDY|YMD] \\
       [--verbose]
+
+Optional ``--apply-iapply-filter`` excludes iApply-style SQL logins from E1–E3.
 """
 
 import argparse
@@ -20,7 +32,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Optional, List, Tuple
+from typing import Iterable, Optional, List, Tuple
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -187,14 +199,136 @@ def validate_required_columns(df: DataFrame) -> None:
         )
 
 
-def apply_axale2_exclusion(df: DataFrame, pattern: str = r'^[A-Z]{2}[0-9]{4}$') -> DataFrame:
+_AFFECTED_ACCOUNTS_DISPLAY_MAX = 10
+_AFFECTED_ACCOUNTS_TRUNCATED_MSG = "Full list in the CSV download."
+
+# Brief explanations keyed by exception code prefix (E1. … E8.)
+EXCEPTION_DESCRIPTIONS: dict[str, str] = {
+    "E1.": (
+        "SQL authentication logins that are not required to follow password policy "
+        "(complexity, history, and related rules)."
+    ),
+    "E2.": (
+        "SQL logins configured so passwords never expire, which increases risk if credentials are compromised."
+    ),
+    "E3.": (
+        "Enabled accounts whose password has not been changed within the allowed period "
+        "(default: older than 365 days)."
+    ),
+    "E4.": (
+        "Accounts with powerful server roles or permissions (for example sysadmin or CONTROL SERVER) "
+        "that can fully administer the SQL Server instance."
+    ),
+    "E5.": (
+        "Database users who are members of db_owner and therefore have full control within that database."
+    ),
+    "E6.": (
+        "Permissions granted directly on database objects to users, rather than through standard database roles."
+    ),
+    "E7.": (
+        "Database users that have no matching server login—often left behind after a login was removed."
+    ),
+    "E8.": (
+        "Disabled logins that still hold powerful server or database privileges and should be reviewed for cleanup."
+    ),
+}
+
+
+def exception_description(exception_type: str) -> str:
+    """Return a brief explanation for an ExceptionType label."""
+    if not exception_type or pd.isna(exception_type):
+        return ""
+    label = str(exception_type).strip()
+    for prefix, text in EXCEPTION_DESCRIPTIONS.items():
+        if label.startswith(prefix):
+            return text
+    return ""
+
+
+def account_label_from_row(row: pd.Series) -> Optional[str]:
+    """Login name for an exception row; falls back to MappedDBUser (e.g. orphaned DB users)."""
+    login = row.get("Login")
+    if pd.notna(login):
+        login_s = str(login).strip()
+        if login_s and login_s.upper() != "NULL":
+            return login_s
+    mapped = row.get("MappedDBUser")
+    if pd.notna(mapped):
+        mapped_s = str(mapped).strip()
+        if mapped_s and mapped_s.upper() != "NULL":
+            return mapped_s
+    return None
+
+
+def format_affected_accounts_display(
+    accounts: Iterable[str],
+    max_show: int = _AFFECTED_ACCOUNTS_DISPLAY_MAX,
+) -> str:
+    """Comma-separated account list for summary UI/CSV; truncates with CSV download note when > max_show."""
+    unique = sorted({str(a).strip() for a in accounts if a and str(a).strip()})
+    if not unique:
+        return "—"
+    if len(unique) <= max_show:
+        return ", ".join(unique)
+    shown = ", ".join(unique[:max_show])
+    return f"{shown} … ({len(unique)} accounts; {_AFFECTED_ACCOUNTS_TRUNCATED_MSG})"
+
+
+def build_exceptions_summary(
+    detailed_df: DataFrame,
+    *,
+    by_environment: bool = False,
+) -> DataFrame:
     """
-    Filter out logins matching the axale2 exclusion pattern.
-    
+    Build summary with Count (unique accounts), Description, and AffectedAccounts per exception.
+
+    Count matches the number of distinct logins/users in Affected accounts, not the number
+    of detailed CSV rows (one account may appear on multiple rows for different grants).
+    """
+    base_cols = ["Exception", "Description", "Count", "AffectedAccounts"]
+    if by_environment:
+        empty_cols = ["Environment"] + base_cols
+    else:
+        empty_cols = base_cols
+
+    if detailed_df.empty:
+        return pd.DataFrame(columns=empty_cols)
+
+    work = detailed_df.copy()
+    work["_Account"] = work.apply(account_label_from_row, axis=1)
+    group_cols = ["Environment", "ExceptionType"] if by_environment else ["ExceptionType"]
+
+    summary = (
+        work.groupby(group_cols, dropna=False)
+        .agg(
+            Count=(
+                "_Account",
+                lambda s: int(s.dropna().nunique()),
+            ),
+            AffectedAccounts=(
+                "_Account",
+                lambda s: format_affected_accounts_display(s.dropna().unique().tolist()),
+            ),
+        )
+        .reset_index()
+    )
+    summary = summary.rename(columns={"ExceptionType": "Exception"})
+    summary.insert(
+        summary.columns.get_loc("Exception") + 1,
+        "Description",
+        summary["Exception"].map(exception_description),
+    )
+    return summary
+
+
+def apply_iapply_exclusion(df: DataFrame, pattern: str = r'^[A-Z]{2}[0-9]{4}$') -> DataFrame:
+    """
+    Filter out logins matching the iApply exclusion pattern.
+
     Args:
         df: DataFrame to filter
         pattern: Regex pattern to match (default: ^[A-Z]{2}[0-9]{4}$)
-        
+
     Returns:
         Filtered DataFrame excluding matching logins
     """
@@ -451,7 +585,7 @@ def detect_disabled_with_powerful_access(df: DataFrame) -> DataFrame:
 def generate_exceptions_register(
     df: DataFrame,
     env_label: str,
-    apply_axale2_filter: bool = False
+    apply_iapply_filter: bool = False
 ) -> Tuple[DataFrame, DataFrame]:
     """
     Generate exceptions register from normalized DataFrame.
@@ -459,7 +593,7 @@ def generate_exceptions_register(
     Args:
         df: Normalized input DataFrame
         env_label: Environment label for output files
-        apply_axale2_filter: Whether to apply axale2 exclusion to E1-E3
+        apply_iapply_filter: Whether to apply iApply login exclusion to E1–E3
         
     Returns:
         Tuple of (detailed_exceptions_df, summary_df)
@@ -471,20 +605,20 @@ def generate_exceptions_register(
     
     # E1: SQL logins without password policy
     e1 = detect_sql_no_password_policy(df)
-    if apply_axale2_filter:
-        e1 = apply_axale2_exclusion(e1)
+    if apply_iapply_filter:
+        e1 = apply_iapply_exclusion(e1)
     exceptions.append(e1)
     
     # E2: SQL logins without password expiration
     e2 = detect_sql_no_password_expiration(df)
-    if apply_axale2_filter:
-        e2 = apply_axale2_exclusion(e2)
+    if apply_iapply_filter:
+        e2 = apply_iapply_exclusion(e2)
     exceptions.append(e2)
     
     # E3: Active logins with password older than 365 days
     e3 = detect_password_older_than(df, days=365)
-    if apply_axale2_filter:
-        e3 = apply_axale2_exclusion(e3)
+    if apply_iapply_filter:
+        e3 = apply_iapply_exclusion(e3)
     exceptions.append(e3)
     
     # E4: Powerful server roles / permissions
@@ -510,13 +644,33 @@ def generate_exceptions_register(
     # Combine all exceptions
     detailed_df = pd.concat([e for e in exceptions if len(e) > 0], ignore_index=True)
     
+    # Optional deduplication on a sensible subset of keys to avoid
+    # inflating counts with identical grants while preserving distinct grants.
+    if len(detailed_df) > 0:
+        dedupe_keys = [
+            'ExceptionType',
+            'Login',
+            'MappedDBUser',
+            'Database',
+            'SrvAuth',
+            'DbAuth',
+        ]
+        existing_keys = [k for k in dedupe_keys if k in detailed_df.columns]
+        if existing_keys:
+            detailed_df = detailed_df.drop_duplicates(subset=existing_keys, keep='first')
+    
     # Add Environment column and reorder columns according to spec
     if len(detailed_df) > 0:
         detailed_df.insert(0, 'Environment', env_label)
-        
+        detailed_df.insert(
+            2,
+            'Description',
+            detailed_df['ExceptionType'].map(exception_description),
+        )
+
         # Define preferred column order (spec order + any remaining columns)
         preferred_order = [
-            'Environment', 'ExceptionType', 'Login', 'Logintype', 'Disabled',
+            'Environment', 'ExceptionType', 'Description', 'Login', 'Logintype', 'Disabled',
             'Password policy enforced?', 'Password expiration?', 'Last password set',
             'SrvAuth', 'SrvAuthType', 'SrvAuthStatus',
             'DbAuth', 'DbAuthType', 'DBPermissionHasEffectOnName',
@@ -530,12 +684,7 @@ def generate_exceptions_register(
         # Reorder columns
         detailed_df = detailed_df[existing_preferred + remaining_cols]
     
-    # Generate summary
-    if len(detailed_df) > 0:
-        summary_df = detailed_df.groupby('ExceptionType').size().reset_index(name='Count')
-        summary_df.columns = ['Exception', 'Count']
-    else:
-        summary_df = pd.DataFrame(columns=['Exception', 'Count'])
+    summary_df = build_exceptions_summary(detailed_df, by_environment=False)
     
     logger.info(f"Detected {len(detailed_df)} exception records across {len(summary_df)} categories")
     
@@ -574,12 +723,15 @@ def print_summary(summary_df: DataFrame) -> None:
     else:
         total = summary_df['Count'].sum()
         print(f"\nTotal exception records: {total}\n")
-        print(f"{'Exception':<60} {'Count':>10}")
-        print("-" * 70)
         for _, row in summary_df.iterrows():
-            print(f"{row['Exception']:<60} {row['Count']:>10}")
-        print("-" * 70)
-        print(f"{'TOTAL':<60} {total:>10}")
+            accounts = row.get("AffectedAccounts", "—")
+            desc = row.get("Description", "")
+            print(f"{row['Exception']}")
+            if desc:
+                print(f"  {desc}")
+            print(f"  Count: {row['Count']}")
+            print(f"  Affected accounts: {accounts}\n")
+        print(f"TOTAL records: {total}")
     
     print("=" * 70 + "\n")
 
@@ -617,15 +769,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--env-label',
         required=False,
-        help='Environment/system label (e.g., axale, axale2, axale3)'
+        help='Environment/system label (e.g., axale, iApply, axale3)'
     )
     
     parser.add_argument(
-        '--apply-axale2-filter',
+        '--apply-iapply-filter',
         type=str,
         default='false',
         choices=['true', 'false', 'True', 'False'],
-        help='Apply axale2 exclusion filter to E1-E3 (default: false)'
+        help='Apply iApply login exclusion to E1–E3 (default: false)'
     )
     
     parser.add_argument(
@@ -636,7 +788,7 @@ def parse_args() -> argparse.Namespace:
         help='Date format hint (default: DMY)'
     )
     
-    parser.add_argument(
+    parser.add_argument (
         '--verbose',
         action='store_true',
         help='Enable INFO-level logging'
@@ -696,7 +848,7 @@ def run_self_test() -> None:
     
     # Test exceptions
     e1 = detect_sql_no_password_policy(df)
-    e1_filtered = apply_axale2_exclusion(e1)
+    e1_filtered = apply_iapply_exclusion(e1)
     
     e2 = detect_sql_no_password_expiration(df)
     e3 = detect_password_older_than(df, days=365)
@@ -752,7 +904,7 @@ def main() -> int:
         logger.info(f"Input: {input_path}")
         logger.info(f"Output directory: {args.output_dir}")
         logger.info(f"Environment label: {args.env_label}")
-        logger.info(f"Apply axale2 filter: {args.apply_axale2_filter}")
+        logger.info(f"Apply iApply exclusion filter: {args.apply_iapply_filter}")
         logger.info("=" * 70)
         
         # Load and normalize
@@ -763,7 +915,7 @@ def main() -> int:
         validate_required_columns(df)
         
         # Generate exceptions
-        apply_filter = args.apply_axale2_filter.lower() == 'true'
+        apply_filter = args.apply_iapply_filter.lower() == 'true'
         detailed_df, summary_df = generate_exceptions_register(
             df, args.env_label, apply_filter
         )
